@@ -1,0 +1,134 @@
+version: '3.9'
+
+services:
+  # ─── PostgreSQL Databases ───────────────────────────────────────────────────
+  db-identity:
+    image: postgres:16-alpine
+    container_name: prm-db-identity
+    environment:
+      POSTGRES_DB: prm_identity_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - identity-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prm_identity_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-restaurant:
+    image: postgres:16-alpine
+    container_name: prm-db-restaurant
+    environment:
+      POSTGRES_DB: prm_restaurant_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5434:5432"
+    volumes:
+      - restaurant-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prm_restaurant_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-order:
+    image: postgres:16-alpine
+    container_name: prm-db-order
+    environment:
+      POSTGRES_DB: prm_order_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - order-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prm_order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Microservices ──────────────────────────────────────────────────────────
+  identity-service:
+    build:
+      context: .
+      dockerfile: src/PRM.Services.Identity/Dockerfile
+    container_name: prm-identity
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db-identity;Port=5432;Database=prm_identity_db;Username=postgres;Password=postgres
+      - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
+      - Jwt__Issuer=PRM.Services.Identity
+      - Jwt__Audience=PRM.Services
+    depends_on:
+      db-identity:
+        condition: service_healthy
+
+  restaurant-service:
+    build:
+      context: .
+      dockerfile: src/PRM.Services.Restaurant/Dockerfile
+    container_name: prm-restaurant
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db-restaurant;Port=5432;Database=prm_restaurant_db;Username=postgres;Password=postgres
+      - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
+      - Jwt__Issuer=PRM.Services.Identity
+      - Jwt__Audience=PRM.Services
+      - AppBaseUrl=http://localhost:5000
+    depends_on:
+      db-restaurant:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: .
+      dockerfile: src/PRM.Services.Order/Dockerfile
+    container_name: prm-order
+    ports:
+      - "5003:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db-order;Port=5432;Database=prm_order_db;Username=postgres;Password=postgres
+      - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
+      - Jwt__Issuer=PRM.Services.Identity
+      - Jwt__Audience=PRM.Services
+      - Services__RestaurantService=http://restaurant-service:8080/
+    depends_on:
+      db-order:
+        condition: service_healthy
+      restaurant-service:
+        condition: service_started
+
+  gateway:
+    build:
+      context: .
+      dockerfile: src/PRM.Gateway/Dockerfile
+    container_name: prm-gateway
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
+      - Jwt__Issuer=PRM.Services.Identity
+      - Jwt__Audience=PRM.Services
+    volumes:
+      - ./src/PRM.Gateway/ocelot.docker.json:/app/ocelot.json
+    depends_on:
+      - identity-service
+      - restaurant-service
+      - order-service
+
+volumes:
+  identity-data:
+  restaurant-data:
+  order-data:

@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PRM.Gateway/PRM.Gateway.csproj" />
+    <Project Path="src/PRM.Services.Identity/PRM.Services.Identity.csproj" />
+    <Project Path="src/PRM.Services.Order/PRM.Services.Order.csproj" />
+    <Project Path="src/PRM.Services.Restaurant/PRM.Services.Restaurant.csproj" />
+    <Project Path="src/PRM.Shared/PRM.Shared.csproj" />
+  </Folder>
+</Solution>
