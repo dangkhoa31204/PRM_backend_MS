@@ -1,0 +1,6 @@
+@PRM.Services.Identity_HostAddress = http://localhost:5296
+
+GET {{PRM.Services.Identity_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

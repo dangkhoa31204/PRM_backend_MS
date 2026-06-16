@@ -1,0 +1,6 @@
+@PRM.Services.Order_HostAddress = http://localhost:5089
+
+GET {{PRM.Services.Order_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
