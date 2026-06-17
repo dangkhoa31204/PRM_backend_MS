@@ -77,6 +77,21 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
     db.Database.Migrate();
+
+    if (!db.Accounts.Any())
+    {
+        db.Accounts.Add(new PRM.Services.Identity.Models.Account
+        {
+            Username = "admin",
+            Email = "admin@prm.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123"),
+            FullName = "System Admin",
+            Role = 1, // Admin role
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        });
+        db.SaveChanges();
+    }
 }
 
 app.Run();

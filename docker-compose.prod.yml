@@ -1,0 +1,135 @@
+version: '3.9'
+
+services:
+  # ─── PostgreSQL Databases (Chỉ truy cập từ Localhost của Server) ────────────────
+  db-identity:
+    image: postgres:16-alpine
+    container_name: prm-db-identity-prod
+    environment:
+      POSTGRES_DB: prm_identity_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_IDENTITY_PASSWORD:-postgres_secure_pass_1}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - identity-prod-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prm_identity_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-restaurant:
+    image: postgres:16-alpine
+    container_name: prm-db-restaurant-prod
+    environment:
+      POSTGRES_DB: prm_restaurant_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_RESTAURANT_PASSWORD:-postgres_secure_pass_2}
+    ports:
+      - "127.0.0.1:5434:5432"
+    volumes:
+      - restaurant-prod-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prm_restaurant_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  db-order:
+    image: postgres:16-alpine
+    container_name: prm-db-order-prod
+    environment:
+      POSTGRES_DB: prm_order_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_ORDER_PASSWORD:-postgres_secure_pass_3}
+    ports:
+      - "127.0.0.1:5435:5432"
+    volumes:
+      - order-prod-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d prm_order_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Microservices (Chỉ truy cập từ Gateway hoặc Localhost) ─────────────────────
+  identity-service:
+    build:
+      context: .
+      dockerfile: src/PRM.Services.Identity/Dockerfile
+    container_name: prm-identity-prod
+    ports:
+      - "127.0.0.1:5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db-identity;Port=5432;Database=prm_identity_db;Username=postgres;Password=${DB_IDENTITY_PASSWORD:-postgres_secure_pass_1}
+      - Jwt__Key=${JWT_KEY:-PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024}
+      - Jwt__Issuer=${JWT_ISSUER:-PRM.Services.Identity}
+      - Jwt__Audience=${JWT_AUDIENCE:-PRM.Services}
+    depends_on:
+      db-identity:
+        condition: service_healthy
+
+  restaurant-service:
+    build:
+      context: .
+      dockerfile: src/PRM.Services.Restaurant/Dockerfile
+    container_name: prm-restaurant-prod
+    ports:
+      - "127.0.0.1:5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db-restaurant;Port=5432;Database=prm_restaurant_db;Username=postgres;Password=${DB_RESTAURANT_PASSWORD:-postgres_secure_pass_2}
+      - Jwt__Key=${JWT_KEY:-PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024}
+      - Jwt__Issuer=${JWT_ISSUER:-PRM.Services.Identity}
+      - Jwt__Audience=${JWT_AUDIENCE:-PRM.Services}
+      - AppBaseUrl=${APP_BASE_URL:-http://localhost:5000}
+    depends_on:
+      db-restaurant:
+        condition: service_healthy
+
+  order-service:
+    build:
+      context: .
+      dockerfile: src/PRM.Services.Order/Dockerfile
+    container_name: prm-order-prod
+    ports:
+      - "127.0.0.1:5003:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=db-order;Port=5432;Database=prm_order_db;Username=postgres;Password=${DB_ORDER_PASSWORD:-postgres_secure_pass_3}
+      - Jwt__Key=${JWT_KEY:-PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024}
+      - Jwt__Issuer=${JWT_ISSUER:-PRM.Services.Identity}
+      - Jwt__Audience=${JWT_AUDIENCE:-PRM.Services}
+      - Services__RestaurantService=http://restaurant-service:8080/
+    depends_on:
+      db-order:
+        condition: service_healthy
+      restaurant-service:
+        condition: service_started
+
+  # ─── API Gateway (Cổng vào duy nhất) ──────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: src/PRM.Gateway/Dockerfile
+    container_name: prm-gateway-prod
+    ports:
+      - "5000:8080" # Có thể đổi thành "127.0.0.1:5000:8080" nếu dùng Nginx Reverse Proxy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - Jwt__Key=${JWT_KEY:-PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024}
+      - Jwt__Issuer=${JWT_ISSUER:-PRM.Services.Identity}
+      - Jwt__Audience=${JWT_AUDIENCE:-PRM.Services}
+    volumes:
+      - ./src/PRM.Gateway/ocelot.docker.json:/app/ocelot.json
+    depends_on:
+      - identity-service
+      - restaurant-service
+      - order-service
+
+volumes:
+  identity-prod-data:
+  restaurant-prod-data:
+  order-prod-data:

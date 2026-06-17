@@ -1,0 +1,70 @@
+services:
+  # 1. Private Service: Identity Service (Không public Internet)
+  - type: pserv
+    name: identity-service
+    env: docker
+    dockerfilePath: src/PRM.Services.Identity/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: prm-db
+          property: connectionString
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: "PRM.Services.Identity"
+      - key: Jwt__Audience
+        value: "PRM.Services"
+
+  # 2. Private Service: Restaurant Service (Không public Internet)
+  - type: pserv
+    name: restaurant-service
+    env: docker
+    dockerfilePath: src/PRM.Services.Restaurant/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: prm-db
+          property: connectionString
+      - key: APP_BASE_URL
+        fromService:
+          type: web
+          name: prm-gateway
+          property: url
+
+  # 3. Private Service: Order Service (Không public Internet)
+  - type: pserv
+    name: order-service
+    env: docker
+    dockerfilePath: src/PRM.Services.Order/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: prm-db
+          property: connectionString
+
+  # 4. Public Web Service: API Gateway (Public Internet)
+  - type: web
+    name: prm-gateway
+    env: docker
+    dockerfilePath: src/PRM.Gateway/Dockerfile
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+
+databases:
+  # 5. PostgreSQL Database (Dùng chung cho 3 Service)
+  - name: prm-db
+    databaseName: prm_db
+    user: prm_user
+    plan: free

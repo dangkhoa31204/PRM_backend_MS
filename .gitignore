@@ -1,0 +1,20 @@
+# Môi trường (BẢO MẬT: Không bao giờ được đưa lên Git)
+.env
+.env.development
+.env.production
+
+# Thư mục build của C#
+[Bb]in/
+[Oo]bj/
+
+# Cấu hình IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# Thư mục dữ liệu Docker
+*-data/
+
+# Các file log
+*.log
