@@ -4,6 +4,7 @@ services:
     name: identity-service
     env: docker
     dockerfilePath: src/PRM.Services.Identity/Dockerfile
+    dockerContext: .
     plan: free
     envVars:
       - key: PORT
@@ -24,6 +25,7 @@ services:
     name: restaurant-service
     env: docker
     dockerfilePath: src/PRM.Services.Restaurant/Dockerfile
+    dockerContext: .
     plan: free
     envVars:
       - key: PORT
@@ -49,6 +51,7 @@ services:
     name: order-service
     env: docker
     dockerfilePath: src/PRM.Services.Order/Dockerfile
+    dockerContext: .
     plan: free
     envVars:
       - key: PORT
@@ -74,6 +77,7 @@ services:
     name: prm-gateway
     env: docker
     dockerfilePath: src/PRM.Gateway/Dockerfile
+    dockerContext: .
     plan: free
     envVars:
       - key: PORT
