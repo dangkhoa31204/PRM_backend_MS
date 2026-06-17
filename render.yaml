@@ -41,10 +41,7 @@ services:
       - key: Jwt__Audience
         value: "PRM.Services"
       - key: AppBaseUrl
-        fromService:
-          type: web
-          name: prm-gateway
-          property: host
+        value: "https://prm-gateway.onrender.com"
 
   # 3. Web Service: Order Service
   - type: web
@@ -67,7 +64,7 @@ services:
       - key: Jwt__Audience
         value: "PRM.Services"
       - key: Services__RestaurantService
-        value: "http://restaurant-service:8080/"
+        value: "https://restaurant-service-inc9.onrender.com/"
 
   # 4. Public Web Service: API Gateway
   - type: web
@@ -86,20 +83,11 @@ services:
       - key: Jwt__Audience
         value: "PRM.Services"
       - key: IDENTITY_HOST
-        fromService:
-          type: web
-          name: identity-service
-          property: host
+        value: "identity-service-mzy2.onrender.com"
       - key: RESTAURANT_HOST
-        fromService:
-          type: web
-          name: restaurant-service
-          property: host
+        value: "restaurant-service-inc9.onrender.com"
       - key: ORDER_HOST
-        fromService:
-          type: web
-          name: order-service
-          property: host
+        value: "order-service-hwin.onrender.com"
 
 databases:
   # 5. PostgreSQL Database (Dùng chung cho 3 Service)
