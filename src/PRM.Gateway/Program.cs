@@ -6,9 +6,25 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load ocelot config: use docker version for production (Render/Docker), local for development
-var ocelotFile = builder.Environment.IsDevelopment() ? "ocelot.json" : "ocelot.docker.json";
-builder.Configuration.AddJsonFile(ocelotFile, optional: false, reloadOnChange: true);
+// Detect Render environment and generate Ocelot config dynamically
+var identityHost = Environment.GetEnvironmentVariable("IDENTITY_HOST");
+var restaurantHost = Environment.GetEnvironmentVariable("RESTAURANT_HOST");
+var orderHost = Environment.GetEnvironmentVariable("ORDER_HOST");
+
+if (!string.IsNullOrEmpty(identityHost) && !string.IsNullOrEmpty(restaurantHost) && !string.IsNullOrEmpty(orderHost))
+{
+    // Running on Render: generate ocelot config with HTTPS public URLs
+    var ocelotJson = GenerateRenderOcelotConfig(identityHost, restaurantHost, orderHost);
+    var tempPath = Path.Combine(AppContext.BaseDirectory, "ocelot.render.json");
+    File.WriteAllText(tempPath, ocelotJson);
+    builder.Configuration.AddJsonFile(tempPath, optional: false, reloadOnChange: false);
+}
+else
+{
+    // Local / Docker: use file-based config
+    var ocelotFile = builder.Environment.IsDevelopment() ? "ocelot.json" : "ocelot.docker.json";
+    builder.Configuration.AddJsonFile(ocelotFile, optional: false, reloadOnChange: true);
+}
 
 // JWT Auth at Gateway level (centralized)
 var jwtKey = builder.Configuration["Jwt:Key"] ?? string.Empty;
@@ -42,3 +58,101 @@ app.MapGet("/", () => "PRM API Gateway Running - Port 5000");
 await app.UseOcelot();
 
 app.Run();
+
+// Helper: Generate Ocelot config for Render (HTTPS public URLs)
+static string GenerateRenderOcelotConfig(string identityHost, string restaurantHost, string orderHost)
+{
+    return $$"""
+    {
+      "Routes": [
+        {
+          "DownstreamPathTemplate": "/api/auth/{everything}",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{identityHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/auth/{everything}",
+          "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/menu/{everything}",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{restaurantHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/menu/{everything}",
+          "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/menu",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{restaurantHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/menu",
+          "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/tables/{everything}",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{restaurantHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/tables/{everything}",
+          "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/tables",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{restaurantHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/tables",
+          "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/orders/{everything}",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/orders/{everything}",
+          "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/orders",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/orders",
+          "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/payments/{everything}",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/payments/{everything}",
+          "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/payments",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/payments",
+          "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/feedbacks/{everything}",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/feedbacks/{everything}",
+          "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/feedbacks",
+          "DownstreamScheme": "https",
+          "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/api/feedbacks",
+          "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+          "DownstreamPathTemplate": "/hubs/staff",
+          "DownstreamScheme": "wss",
+          "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/hubs/staff",
+          "UpstreamHttpMethod": [ "GET" ]
+        }
+      ],
+      "GlobalConfiguration": {
+        "BaseUrl": "https://{{Environment.GetEnvironmentVariable("RENDER_EXTERNAL_HOSTNAME") ?? "localhost"}}"
+      }
+    }
+    """;
+}

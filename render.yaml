@@ -1,6 +1,6 @@
 services:
-  # 1. Private Service: Identity Service (Không public Internet)
-  - type: pserv
+  # 1. Web Service: Identity Service
+  - type: web
     name: identity-service
     env: docker
     dockerfilePath: src/PRM.Services.Identity/Dockerfile
@@ -19,8 +19,8 @@ services:
       - key: Jwt__Audience
         value: "PRM.Services"
 
-  # 2. Private Service: Restaurant Service (Không public Internet)
-  - type: pserv
+  # 2. Web Service: Restaurant Service
+  - type: web
     name: restaurant-service
     env: docker
     dockerfilePath: src/PRM.Services.Restaurant/Dockerfile
@@ -44,8 +44,8 @@ services:
           name: prm-gateway
           property: host
 
-  # 3. Private Service: Order Service (Không public Internet)
-  - type: pserv
+  # 3. Web Service: Order Service
+  - type: web
     name: order-service
     env: docker
     dockerfilePath: src/PRM.Services.Order/Dockerfile
@@ -64,9 +64,12 @@ services:
       - key: Jwt__Audience
         value: "PRM.Services"
       - key: Services__RestaurantService
-        value: "http://restaurant-service:8080/"
+        fromService:
+          type: web
+          name: restaurant-service
+          property: hostport
 
-  # 4. Public Web Service: API Gateway (Public Internet)
+  # 4. Public Web Service: API Gateway
   - type: web
     name: prm-gateway
     env: docker
@@ -81,6 +84,21 @@ services:
         value: "PRM.Services.Identity"
       - key: Jwt__Audience
         value: "PRM.Services"
+      - key: IDENTITY_HOST
+        fromService:
+          type: web
+          name: identity-service
+          property: host
+      - key: RESTAURANT_HOST
+        fromService:
+          type: web
+          name: restaurant-service
+          property: host
+      - key: ORDER_HOST
+        fromService:
+          type: web
+          name: order-service
+          property: host
 
 databases:
   # 5. PostgreSQL Database (Dùng chung cho 3 Service)
