@@ -32,7 +32,13 @@ services:
         fromDatabase:
           name: prm-db
           property: connectionString
-      - key: APP_BASE_URL
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: "PRM.Services.Identity"
+      - key: Jwt__Audience
+        value: "PRM.Services"
+      - key: AppBaseUrl
         fromService:
           type: web
           name: prm-gateway
@@ -51,6 +57,14 @@ services:
         fromDatabase:
           name: prm-db
           property: connectionString
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: "PRM.Services.Identity"
+      - key: Jwt__Audience
+        value: "PRM.Services"
+      - key: Services__RestaurantService
+        value: "http://restaurant-service:8080/"
 
   # 4. Public Web Service: API Gateway (Public Internet)
   - type: web
@@ -61,6 +75,12 @@ services:
     envVars:
       - key: PORT
         value: 8080
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: "PRM.Services.Identity"
+      - key: Jwt__Audience
+        value: "PRM.Services"
 
 databases:
   # 5. PostgreSQL Database (Dùng chung cho 3 Service)

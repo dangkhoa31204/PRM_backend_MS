@@ -6,8 +6,9 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Load ocelot.json
-builder.Configuration.AddJsonFile("ocelot.json", optional: false, reloadOnChange: true);
+// Load ocelot config: use docker version for production (Render/Docker), local for development
+var ocelotFile = builder.Environment.IsDevelopment() ? "ocelot.json" : "ocelot.docker.json";
+builder.Configuration.AddJsonFile(ocelotFile, optional: false, reloadOnChange: true);
 
 // JWT Auth at Gateway level (centralized)
 var jwtKey = builder.Configuration["Jwt:Key"] ?? string.Empty;
