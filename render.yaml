@@ -36,7 +36,7 @@ services:
         fromService:
           type: web
           name: prm-gateway
-          property: url
+          property: host
 
   # 3. Private Service: Order Service (Không public Internet)
   - type: pserv
