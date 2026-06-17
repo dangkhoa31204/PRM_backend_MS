@@ -67,10 +67,7 @@ services:
       - key: Jwt__Audience
         value: "PRM.Services"
       - key: Services__RestaurantService
-        fromService:
-          type: web
-          name: restaurant-service
-          property: hostport
+        value: "http://restaurant-service:8080/"
 
   # 4. Public Web Service: API Gateway
   - type: web
