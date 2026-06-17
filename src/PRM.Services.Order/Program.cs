@@ -14,8 +14,10 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
 
 // Database
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+connectionString = ConvertPostgresConnectionString(connectionString);
 builder.Services.AddDbContext<OrderDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // Inter-service HTTP Client (Restaurant Service)
 builder.Services.AddHttpClient<IRestaurantServiceClient, RestaurantServiceClient>(client =>
@@ -105,3 +107,26 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.Run();
+
+static string? ConvertPostgresConnectionString(string? connectionString)
+{
+    if (string.IsNullOrEmpty(connectionString))
+        return connectionString;
+
+    if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        var databaseUri = new Uri(connectionString);
+        var userInfo = databaseUri.UserInfo.Split(':');
+        
+        var username = userInfo[0];
+        var password = userInfo.Length > 1 ? userInfo[1] : string.Empty;
+        var host = databaseUri.Host;
+        var port = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
+        var database = databaseUri.AbsolutePath.TrimStart('/');
+
+        return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+    }
+
+    return connectionString;
+}
