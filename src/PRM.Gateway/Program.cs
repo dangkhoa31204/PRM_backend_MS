@@ -53,7 +53,16 @@ var app = builder.Build();
 app.UseCors();
 app.UseAuthentication();
 
-app.MapGet("/", () => "PRM API Gateway Running - Port 5000");
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/")
+    {
+        context.Response.ContentType = "text/plain; charset=utf-8";
+        await context.Response.WriteAsync("PRM API Gateway Running - Port 5000");
+        return;
+    }
+    await next();
+});
 
 await app.UseOcelot();
 
