@@ -40,8 +40,8 @@ public class MenuController : ControllerBase
         return Ok(items);
     }
 
-    /// <summary>Lấy tất cả món kể cả ẩn (Admin).</summary>
-    [Authorize(Roles = "1")]
+    /// <summary>Lấy tất cả món kể cả ẩn (Admin/Staff).</summary>
+    [Authorize(Roles = "1,2")]
     [HttpGet("all")]
     public async Task<ActionResult<IEnumerable<MenuItemResponse>>> GetAll()
     {

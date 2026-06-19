@@ -2,9 +2,9 @@ namespace PRM.Shared.Enums;
 
 public enum MenuCategory
 {
-    Food = 1,
-    Drink = 2,
-    Dessert = 3,
-    Combo = 4,
-    Other = 5
+    Coffee = 1,
+    Tea = 2,
+    Cake = 3,
+    Juice = 4,
+    Other = 99
 }
