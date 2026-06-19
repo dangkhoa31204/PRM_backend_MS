@@ -98,6 +98,7 @@ app.UseAuthorization();
 app.MapGet("/", () => "PRM Order Service Running - Port 5003");
 app.MapControllers();
 app.MapHub<StaffNotificationHub>(StaffNotificationHub.Route);
+app.MapHub<FeedbackHub>(FeedbackHub.Route);
 
 // Auto-migrate on startup
 using (var scope = app.Services.CreateScope())

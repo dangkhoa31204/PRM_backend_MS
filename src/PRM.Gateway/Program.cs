@@ -157,6 +157,13 @@ static string GenerateRenderOcelotConfig(string identityHost, string restaurantH
           "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
           "UpstreamPathTemplate": "/hubs/staff",
           "UpstreamHttpMethod": [ "GET" ]
+        },
+        {
+          "DownstreamPathTemplate": "/hubs/feedback",
+          "DownstreamScheme": "wss",
+          "DownstreamHostAndPorts": [{ "Host": "{{orderHost}}", "Port": 443 }],
+          "UpstreamPathTemplate": "/hubs/feedback",
+          "UpstreamHttpMethod": [ "GET" ]
         }
       ],
       "GlobalConfiguration": {

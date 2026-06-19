@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
 using PRM.Services.Order.Data;
 using PRM.Services.Order.Models;
+using PRM.Services.Order.Hubs;
 
 namespace PRM.Services.Order.Controllers;
 
@@ -11,8 +13,13 @@ namespace PRM.Services.Order.Controllers;
 public class FeedbacksController : ControllerBase
 {
     private readonly OrderDbContext _context;
+    private readonly IHubContext<FeedbackHub> _feedbackHub;
 
-    public FeedbacksController(OrderDbContext context) => _context = context;
+    public FeedbacksController(OrderDbContext context, IHubContext<FeedbackHub> feedbackHub)
+    {
+        _context = context;
+        _feedbackHub = feedbackHub;
+    }
 
     // --- DTOs ---
     public record CreateFeedbackRequest(int OrderId, int TableId, int Rating, string? Comment);
@@ -22,6 +29,19 @@ public class FeedbacksController : ControllerBase
 
     private static FeedbackResponse ToResponse(Feedback f) =>
         new(f.FeedbackId, f.OrderId, f.TableId, f.Rating, f.Comment, f.IsHidden, f.CreatedAt);
+
+    /// <summary>Lấy danh sách feedback active (Public cho khách xem).</summary>
+    [AllowAnonymous]
+    [HttpGet("active")]
+    public async Task<ActionResult<IEnumerable<FeedbackResponse>>> GetActive()
+    {
+        var feedbacks = await _context.Feedbacks
+            .Where(f => !f.IsHidden)
+            .OrderByDescending(f => f.CreatedAt)
+            .Select(f => ToResponse(f))
+            .ToListAsync();
+        return Ok(feedbacks);
+    }
 
     /// <summary>
     /// Khách gửi feedback ẩn danh (Public).
@@ -62,7 +82,11 @@ public class FeedbacksController : ControllerBase
         _context.Feedbacks.Add(feedback);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetByOrder), new { orderId = request.OrderId }, ToResponse(feedback));
+        var response = ToResponse(feedback);
+        // Broadcast real-time
+        await _feedbackHub.Clients.All.SendAsync("FeedbackCreated", response);
+
+        return CreatedAtAction(nameof(GetByOrder), new { orderId = request.OrderId }, response);
     }
 
     /// <summary>Lấy feedback của 1 đơn (Staff/Admin).</summary>
@@ -119,6 +143,10 @@ public class FeedbacksController : ControllerBase
         feedback.IsHidden = !feedback.IsHidden;
         await _context.SaveChangesAsync();
 
-        return Ok(ToResponse(feedback));
+        var response = ToResponse(feedback);
+        // Broadcast real-time visibility update
+        await _feedbackHub.Clients.All.SendAsync("FeedbackVisibilityChanged", response);
+
+        return Ok(response);
     }
 }
