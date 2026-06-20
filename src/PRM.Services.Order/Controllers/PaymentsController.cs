@@ -181,6 +181,29 @@ public class PaymentsController : ControllerBase
         // Kiểm tra đơn hàng đã hoàn thành hoặc hủy chưa
         if (order.Status is 4 or 5)
         {
+            // Vẫn phát SignalR để client đồng bộ lại nếu chưa đóng dialog
+            try
+            {
+                var dbItems = await _context.OrderItems.Where(oi => oi.OrderId == orderId).ToListAsync();
+                var ids = dbItems.Select(oi => oi.MenuItemId).Distinct();
+                var menuItems = await _restaurant.ValidateAndGetItemsAsync(ids);
+                
+                var items = dbItems.Select(oi => new OrdersController.OrderItemResponse(
+                    oi.OrderItemId, oi.MenuItemId,
+                    menuItems?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
+                    oi.Quantity, oi.UnitPrice, oi.Note)).ToList();
+
+                var orderResponse = new OrdersController.OrderResponse(
+                    order.OrderId, order.TableId, order.Status,
+                    order.Status == 4 ? "Completed" : "Cancelled", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items);
+
+                await _notify.NotifyOrderStatusUpdatedAsync(orderResponse);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SepayWebhook] Lỗi gửi SignalR đồng bộ: {ex.Message}");
+            }
+
             return Ok(new { success = true, message = $"Order {orderId} is already completed or cancelled." });
         }
 
