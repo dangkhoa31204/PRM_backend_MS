@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using PRM.Services.Order.Clients;
 using PRM.Services.Order.Data;
 using PRM.Services.Order.Models;
 using PRM.Services.Order.Models.Enums;
+using PRM.Services.Order.Notifications;
+using System.Text.RegularExpressions;
 
 namespace PRM.Services.Order.Controllers;
 
@@ -12,8 +15,18 @@ namespace PRM.Services.Order.Controllers;
 public class PaymentsController : ControllerBase
 {
     private readonly OrderDbContext _context;
+    private readonly INotificationService _notify;
+    private readonly IRestaurantServiceClient _restaurant;
 
-    public PaymentsController(OrderDbContext context) => _context = context;
+    public PaymentsController(
+        OrderDbContext context,
+        INotificationService notify,
+        IRestaurantServiceClient restaurant)
+    {
+        _context = context;
+        _notify = notify;
+        _restaurant = restaurant;
+    }
 
     // --- DTOs ---
     public record CreatePaymentRequest(int OrderId, PaymentMethod Method);
@@ -120,5 +133,131 @@ public class PaymentsController : ControllerBase
         if (status.HasValue) query = query.Where(p => p.Status == status.Value);
         var payments = await query.OrderByDescending(p => p.CreatedAt).Select(p => ToResponse(p)).ToListAsync();
         return Ok(payments);
+    }
+
+    public class SepayWebhookPayload
+    {
+        public int Id { get; set; }
+        public string Gateway { get; set; } = string.Empty;
+        public string TransactionDate { get; set; } = string.Empty;
+        public string AccountNumber { get; set; } = string.Empty;
+        public string TransferType { get; set; } = string.Empty; // "in" or "out"
+        public decimal TransferAmount { get; set; }
+        public string TransactionContent { get; set; } = string.Empty;
+        public string ReferenceNumber { get; set; } = string.Empty;
+    }
+
+    /// <summary>Webhook nhận thông báo thanh toán tự động từ Sepay (Public).</summary>
+    [AllowAnonymous]
+    [HttpPost("sepay-webhook")]
+    public async Task<IActionResult> SepayWebhook([FromBody] SepayWebhookPayload payload)
+    {
+        if (payload == null) return BadRequest("Payload is null.");
+
+        // Log nhận thông tin giao dịch để dễ debug
+        Console.WriteLine($"[SepayWebhook] Nhận giao dịch: {payload.ReferenceNumber}, Số tiền: {payload.TransferAmount}, Nội dung: {payload.TransactionContent}");
+
+        // Chỉ chấp nhận giao dịch tiền vào
+        if (!string.Equals(payload.TransferType, "in", StringComparison.OrdinalIgnoreCase))
+        {
+            return Ok(new { success = false, message = "Not an 'in' transfer type." });
+        }
+
+        // Regex tìm mã đơn hàng dạng AROMA<id> hoặc AROMA_<id> (Không phân biệt chữ hoa thường)
+        var match = Regex.Match(payload.TransactionContent, @"AROMA_?(\d+)", RegexOptions.IgnoreCase);
+        if (!match.Success)
+        {
+            return Ok(new { success = false, message = "Could not parse OrderId from transaction content." });
+        }
+
+        int orderId = int.Parse(match.Groups[1].Value);
+
+        var order = await _context.Orders.FindAsync(orderId);
+        if (order == null)
+        {
+            return Ok(new { success = false, message = $"Order {orderId} not found." });
+        }
+
+        // Kiểm tra đơn hàng đã hoàn thành hoặc hủy chưa
+        if (order.Status is 4 or 5)
+        {
+            return Ok(new { success = true, message = $"Order {orderId} is already completed or cancelled." });
+        }
+
+        // Xác thực số tiền (Sepay gửi TransferAmount, đơn hàng lưu TotalAmount)
+        if (payload.TransferAmount < order.TotalAmount)
+        {
+            return Ok(new { success = false, message = $"Amount mismatch. Received: {payload.TransferAmount}, Required: {order.TotalAmount}" });
+        }
+
+        // Cập nhật hoặc tạo mới bản ghi Payment
+        var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == orderId);
+        if (payment == null)
+        {
+            payment = new Payment
+            {
+                OrderId = orderId,
+                Amount = order.TotalAmount,
+                Method = PaymentMethod.Transfer,
+                Status = PaymentStatus.Paid,
+                PaidAt = DateTime.UtcNow,
+                CreatedAt = DateTime.UtcNow
+            };
+            _context.Payments.Add(payment);
+        }
+        else
+        {
+            payment.Status = PaymentStatus.Paid;
+            payment.PaidAt = DateTime.UtcNow;
+            payment.Method = PaymentMethod.Transfer; // Đảm bảo ghi nhận là chuyển khoản
+        }
+
+        // Cập nhật trạng thái Order sang hoàn thành (Status = 4)
+        order.Status = 4;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        // Giải phóng bàn ăn nếu bàn không còn đơn nào khác đang hoạt động
+        var hasOtherActive = await _context.Orders
+            .AnyAsync(o => o.TableId == order.TableId && o.OrderId != orderId && o.Status < 4);
+
+        if (!hasOtherActive)
+        {
+            try
+            {
+                await _restaurant.ReleaseTableAsync(order.TableId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[SepayWebhook] Lỗi giải phóng bàn ăn {order.TableId}: {ex.Message}");
+            }
+        }
+
+        await _context.SaveChangesAsync();
+
+        // Phát SignalR thông báo thay đổi trạng thái đơn
+        try
+        {
+            // Build Response để gửi qua SignalR
+            var dbItems = await _context.OrderItems.Where(oi => oi.OrderId == orderId).ToListAsync();
+            var ids = dbItems.Select(oi => oi.MenuItemId).Distinct();
+            var menuItems = await _restaurant.ValidateAndGetItemsAsync(ids);
+            
+            var items = dbItems.Select(oi => new OrdersController.OrderItemResponse(
+                oi.OrderItemId, oi.MenuItemId,
+                menuItems?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
+                oi.Quantity, oi.UnitPrice, oi.Note)).ToList();
+
+            var orderResponse = new OrdersController.OrderResponse(
+                order.OrderId, order.TableId, order.Status,
+                "Completed", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items);
+
+            await _notify.NotifyOrderStatusUpdatedAsync(orderResponse);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[SepayWebhook] Lỗi gửi SignalR: {ex.Message}");
+        }
+
+        return Ok(new { success = true, message = $"Order {orderId} processed successfully." });
     }
 }
