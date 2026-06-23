@@ -121,8 +121,9 @@ services:
       - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
       - Jwt__Issuer=PRM.Services.Identity
       - Jwt__Audience=PRM.Services
-    volumes:
-      - ./src/PRM.Gateway/ocelot.docker.json:/app/ocelot.json
+      - Proxy__Services__Identity=http://identity-service:8080
+      - Proxy__Services__Restaurant=http://restaurant-service:8080
+      - Proxy__Services__Order=http://order-service:8080
     depends_on:
       - identity-service
       - restaurant-service

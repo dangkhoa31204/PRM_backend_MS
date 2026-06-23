@@ -82,12 +82,12 @@ services:
         value: "PRM.Services.Identity"
       - key: Jwt__Audience
         value: "PRM.Services"
-      - key: IDENTITY_HOST
-        value: "identity-service-mzy2.onrender.com"
-      - key: RESTAURANT_HOST
-        value: "restaurant-service-inc9.onrender.com"
-      - key: ORDER_HOST
-        value: "order-service-hwin.onrender.com"
+      - key: Proxy__Services__Identity
+        value: "https://identity-service-mzy2.onrender.com"
+      - key: Proxy__Services__Restaurant
+        value: "https://restaurant-service-inc9.onrender.com"
+      - key: Proxy__Services__Order
+        value: "https://order-service-hwin.onrender.com"
 
 databases:
   # 5. PostgreSQL Database (Dùng chung cho 3 Service)
