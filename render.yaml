@@ -64,7 +64,7 @@ services:
       - key: Jwt__Audience
         value: "PRM.Services"
       - key: Services__RestaurantService
-        value: "https://restaurant-service-inc9.onrender.com/"
+        value: "http://restaurant-service:8080/"
 
   # 4. Public Web Service: API Gateway
   - type: web
@@ -83,11 +83,11 @@ services:
       - key: Jwt__Audience
         value: "PRM.Services"
       - key: Proxy__Services__Identity
-        value: "https://identity-service-mzy2.onrender.com"
+        value: "http://identity-service:8080"
       - key: Proxy__Services__Restaurant
-        value: "https://restaurant-service-inc9.onrender.com"
+        value: "http://restaurant-service:8080"
       - key: Proxy__Services__Order
-        value: "https://order-service-hwin.onrender.com"
+        value: "http://order-service:8080"
 
 databases:
   # 5. PostgreSQL Database (Dùng chung cho 3 Service)
