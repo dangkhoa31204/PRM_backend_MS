@@ -90,11 +90,11 @@ static string? ConvertPostgresConnectionString(string? connectionString)
         var databaseUri = new Uri(connectionString);
         var userInfo = databaseUri.UserInfo.Split(':');
         
-        var username = userInfo[0];
-        var password = userInfo.Length > 1 ? userInfo[1] : string.Empty;
-        var host = databaseUri.Host;
+        var username = Uri.UnescapeDataString(userInfo[0]);
+        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty;
+        var host = Uri.UnescapeDataString(databaseUri.Host);
         var port = databaseUri.Port == -1 ? 5432 : databaseUri.Port;
-        var database = databaseUri.AbsolutePath.TrimStart('/');
+        var database = Uri.UnescapeDataString(databaseUri.AbsolutePath.TrimStart('/'));
 
         return $"Host={host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
     }
