@@ -15,6 +15,11 @@ connectionString = ConvertPostgresConnectionString(connectionString);
 builder.Services.AddDbContext<RestaurantDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// Register Cloudinary Settings & Service
+builder.Services.Configure<PRM.Services.Restaurant.Models.CloudinarySettings>(
+    builder.Configuration.GetSection("CloudinarySettings"));
+builder.Services.AddScoped<PRM.Services.Restaurant.Services.IPhotoService, PRM.Services.Restaurant.Services.PhotoService>();
+
 var jwtKey = builder.Configuration["Jwt:Key"] ?? string.Empty;
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

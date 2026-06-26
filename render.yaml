@@ -42,6 +42,12 @@ services:
         value: "PRM.Services"
       - key: AppBaseUrl
         value: "https://prm-gateway.onrender.com"
+      - key: CloudinarySettings__CloudName
+        value: "dkppq6bsj"
+      - key: CloudinarySettings__ApiKey
+        value: "995222553571651"
+      - key: CloudinarySettings__ApiSecret
+        sync: false
 
   # 3. Web Service: Order Service
   - type: web

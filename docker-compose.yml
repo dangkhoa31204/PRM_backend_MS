@@ -85,6 +85,9 @@ services:
       - Jwt__Issuer=PRM.Services.Identity
       - Jwt__Audience=PRM.Services
       - AppBaseUrl=http://localhost:5000
+      - CloudinarySettings__CloudName=${CLOUDINARY_CLOUD_NAME:-dkppq6bsj}
+      - CloudinarySettings__ApiKey=${CLOUDINARY_API_KEY:-995222553571651}
+      - CloudinarySettings__ApiSecret=${CLOUDINARY_API_SECRET}
     depends_on:
       db-restaurant:
         condition: service_healthy

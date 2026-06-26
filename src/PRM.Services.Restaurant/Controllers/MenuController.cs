@@ -12,8 +12,13 @@ namespace PRM.Services.Restaurant.Controllers;
 public class MenuController : ControllerBase
 {
     private readonly RestaurantDbContext _context;
+    private readonly Services.IPhotoService _photoService;
 
-    public MenuController(RestaurantDbContext context) => _context = context;
+    public MenuController(RestaurantDbContext context, Services.IPhotoService photoService)
+    {
+        _context = context;
+        _photoService = photoService;
+    }
 
     // --- DTOs ---
     public record MenuItemResponse(
@@ -157,5 +162,21 @@ public class MenuController : ControllerBase
         item.UpdatedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
         return Ok(ToResponse(item));
+    }
+
+    /// <summary>Tải ảnh món ăn lên Cloudinary (Admin).</summary>
+    [Authorize(Roles = "1")]
+    [HttpPost("upload-image")]
+    public async Task<ActionResult<object>> UploadImage(IFormFile file)
+    {
+        if (file == null || file.Length == 0) return BadRequest("File is empty.");
+        
+        var uploadResult = await _photoService.AddPhotoAsync(file);
+        if (uploadResult.Error != null)
+        {
+            return BadRequest(uploadResult.Error.Message);
+        }
+
+        return Ok(new { imageUrl = uploadResult.SecureUrl.AbsoluteUri });
     }
 }
