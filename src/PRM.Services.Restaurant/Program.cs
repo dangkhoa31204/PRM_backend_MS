@@ -81,94 +81,77 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<RestaurantDbContext>();
     db.Database.Migrate();
 
-    // Reset and seed MenuItems to match Flutter initialMenuItems
+    // Reset and seed MenuItems to match user's custom items
     try
     {
-        if (!db.MenuItems.Any())
+        db.Database.ExecuteSqlRaw("TRUNCATE TABLE \"MenuItems\" RESTART IDENTITY CASCADE;");
+        
+        db.MenuItems.AddRange(new List<PRM.Services.Restaurant.Models.MenuItem>
         {
-            db.MenuItems.AddRange(new List<PRM.Services.Restaurant.Models.MenuItem>
+            new PRM.Services.Restaurant.Models.MenuItem
             {
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "Espresso",
-                    Description = "Italian espresso",
-                    Price = 30000,
-                    Category = PRM.Shared.Enums.MenuCategory.Coffee,
-                    IsAvailable = false,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "Latte",
-                    Description = "Milk coffee",
-                    Price = 45000,
-                    Category = PRM.Shared.Enums.MenuCategory.Coffee,
-                    IsAvailable = false,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "Matcha Tea",
-                    Description = "Japanese matcha",
-                    Price = 50000,
-                    Category = PRM.Shared.Enums.MenuCategory.Tea,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "Cheesecake",
-                    Description = "New York cheesecake",
-                    Price = 55000,
-                    Category = PRM.Shared.Enums.MenuCategory.Cake,
-                    IsAvailable = false,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "Orange Juice",
-                    Description = "Fresh orange juice",
-                    Price = 40000,
-                    Category = PRM.Shared.Enums.MenuCategory.Juice,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "CaPheTrung",
-                    Description = "ca phe rat ng...",
-                    Price = 20000,
-                    Category = PRM.Shared.Enums.MenuCategory.Coffee,
-                    IsAvailable = false,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "aas",
-                    Description = "asdasd",
-                    Price = 30000,
-                    Category = PRM.Shared.Enums.MenuCategory.Coffee,
-                    IsAvailable = false,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "v Brainy",
-                    Description = "co",
-                    Price = 30000,
-                    Category = PRM.Shared.Enums.MenuCategory.Tea,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                }
-            });
+                Name = "matcha",
+                Description = "trà olong thanh mát",
+                Price = 10000,
+                Category = PRM.Shared.Enums.MenuCategory.Tea,
+                ImageUrl = null,
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "banhngot",
+                Description = "banhngotmoi",
+                Price = 10000,
+                Category = PRM.Shared.Enums.MenuCategory.Cake,
+                ImageUrl = null,
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "7up",
+                Description = "nước 7up giải khát",
+                Price = 10000,
+                Category = PRM.Shared.Enums.MenuCategory.Juice,
+                ImageUrl = "/data/user/0/com.example.qr_order/cache/5c5443fa-a6be-4b07-9b2f-b4b1a4570b20/IMG_20260630_102115.jpg",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Pudding siêu ngọt",
+                Description = "khó lỗi",
+                Price = 120000,
+                Category = PRM.Shared.Enums.MenuCategory.Cake,
+                ImageUrl = "/data/user/0/com.example.qr_order/cache/5c5443fa-a6be-4b07-9b2f-b4b1a4570b20/IMG_20260630_102128.jpg",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "bánh siêu ngọt",
+                Description = "bánh ngon",
+                Price = 20000,
+                Category = PRM.Shared.Enums.MenuCategory.Cake,
+                ImageUrl = null,
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "trà vải",
+                Description = "trà vải siêu ngọt",
+                Price = 20000,
+                Category = PRM.Shared.Enums.MenuCategory.Tea,
+                ImageUrl = "https://res.cloudinary.com/dkppq6bsj/image/upload/v1719374026/restaurant_menu/n04iayuhqspq71u8swy1.jpg",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            }
+        });
 
-            db.SaveChanges();
-            Console.WriteLine("✅ Database seeded successfully with correct MenuItems.");
-        }
-        else
-        {
-            Console.WriteLine("ℹ️ MenuItems table already has data. Skipping seed.");
-        }
+        db.SaveChanges();
+        Console.WriteLine("✅ Database seeded successfully with user's custom MenuItems.");
     }
     catch (Exception ex)
     {
