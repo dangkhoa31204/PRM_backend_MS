@@ -144,6 +144,7 @@ public class PaymentsController : ControllerBase
         public string TransferType { get; set; } = string.Empty; // "in" or "out"
         public decimal TransferAmount { get; set; }
         public string TransactionContent { get; set; } = string.Empty;
+        public string Content { get; set; } = string.Empty; // Trường thực tế Sepay gửi chứa nội dung chuyển khoản
         public string ReferenceNumber { get; set; } = string.Empty;
     }
 
@@ -154,8 +155,13 @@ public class PaymentsController : ControllerBase
     {
         if (payload == null) return BadRequest("Payload is null.");
 
+        // Ưu tiên đọc từ Content (Sepay chuyển khoản thật) rồi mới tới TransactionContent (nút Test giả lập)
+        string transactionContent = !string.IsNullOrEmpty(payload.Content) 
+            ? payload.Content 
+            : payload.TransactionContent;
+
         // Log nhận thông tin giao dịch để dễ debug
-        Console.WriteLine($"[SepayWebhook] Nhận giao dịch: {payload.ReferenceNumber}, Số tiền: {payload.TransferAmount}, Nội dung: {payload.TransactionContent}");
+        Console.WriteLine($"[SepayWebhook] Nhận giao dịch: {payload.ReferenceNumber}, Số tiền: {payload.TransferAmount}, Nội dung: {transactionContent}");
 
         // Chỉ chấp nhận giao dịch tiền vào
         if (!string.Equals(payload.TransferType, "in", StringComparison.OrdinalIgnoreCase))
@@ -164,7 +170,7 @@ public class PaymentsController : ControllerBase
         }
 
         // Regex tìm mã đơn hàng dạng AROMA<id> hoặc AROMA_<id> (Không phân biệt chữ hoa thường)
-        var match = Regex.Match(payload.TransactionContent, @"AROMA_?(\d+)", RegexOptions.IgnoreCase);
+        var match = Regex.Match(transactionContent, @"AROMA_?(\d+)", RegexOptions.IgnoreCase);
         if (!match.Success)
         {
             return Ok(new { success = false, message = "Could not parse OrderId from transaction content." });
