@@ -55,6 +55,7 @@ services:
 
   # ─── Microservices (Chỉ truy cập từ Gateway hoặc Localhost) ─────────────────────
   identity-service:
+    image: ghcr.io/dangkhoa31204/prm-identity-service:latest
     build:
       context: .
       dockerfile: src/PRM.Services.Identity/Dockerfile
@@ -72,6 +73,7 @@ services:
         condition: service_healthy
 
   restaurant-service:
+    image: ghcr.io/dangkhoa31204/prm-restaurant-service:latest
     build:
       context: .
       dockerfile: src/PRM.Services.Restaurant/Dockerfile
@@ -93,6 +95,7 @@ services:
         condition: service_healthy
 
   order-service:
+    image: ghcr.io/dangkhoa31204/prm-order-service:latest
     build:
       context: .
       dockerfile: src/PRM.Services.Order/Dockerfile
@@ -114,6 +117,7 @@ services:
 
   # ─── API Gateway (Cổng vào duy nhất) ──────────────────────────────────────────
   gateway:
+    image: ghcr.io/dangkhoa31204/prm-gateway:latest
     build:
       context: .
       dockerfile: src/PRM.Gateway/Dockerfile

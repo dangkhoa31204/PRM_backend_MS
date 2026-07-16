@@ -1,0 +1,84 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ "main", "developer" ]
+  pull_request:
+    branches: [ "main", "developer" ]
+
+jobs:
+  dotnet-build:
+    name: Build & Verify .NET Code
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0'
+
+    - name: Restore dependencies
+      run: dotnet restore src/PRM.Services.Identity/PRM.Services.Identity.csproj
+
+    - name: Build Identity Service
+      run: dotnet build src/PRM.Services.Identity/PRM.Services.Identity.csproj --no-restore -c Release
+
+    - name: Build Restaurant Service
+      run: dotnet build src/PRM.Services.Restaurant/PRM.Services.Restaurant.csproj -c Release
+
+    - name: Build Order Service
+      run: dotnet build src/PRM.Services.Order/PRM.Services.Order.csproj -c Release
+
+    - name: Build API Gateway
+      run: dotnet build src/PRM.Gateway/PRM.Gateway.csproj -c Release
+
+  docker-verify:
+    name: Verify Docker Builds
+    runs-on: ubuntu-latest
+    needs: dotnet-build
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Test Build Identity Service Dockerfile
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: src/PRM.Services.Identity/Dockerfile
+        push: false
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test Build Restaurant Service Dockerfile
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: src/PRM.Services.Restaurant/Dockerfile
+        push: false
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test Build Order Service Dockerfile
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: src/PRM.Services.Order/Dockerfile
+        push: false
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test Build API Gateway Dockerfile
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: src/PRM.Gateway/Dockerfile
+        push: false
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
