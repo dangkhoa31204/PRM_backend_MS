@@ -2,9 +2,9 @@ name: Continuous Integration
 
 on:
   push:
-    branches: [ "main", "developer" ]
+    branches: [ "master", "developer" ]
   pull_request:
-    branches: [ "main", "developer" ]
+    branches: [ "master", "developer" ]
 
 jobs:
   dotnet-build:
