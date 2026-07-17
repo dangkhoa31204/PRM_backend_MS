@@ -154,9 +154,11 @@ public class PaymentsController : ControllerBase
         public string TransferType { get; set; } = string.Empty; // "in" or "out"
 
         [JsonPropertyName("transferAmount")]
+        [System.Text.Json.Serialization.JsonNumberHandling(System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString)]
         public decimal TransferAmount { get; set; }
 
         [JsonPropertyName("transactionContent")]
+
         public string TransactionContent { get; set; } = string.Empty;
 
         [JsonPropertyName("content")]
@@ -190,10 +192,11 @@ public class PaymentsController : ControllerBase
             return Ok(new { success = false, message = "Not an 'in' transfer type." });
         }
 
-        // Regex tìm mã đơn hàng dạng AROMA<id> hoặc AROMA_<id> (Không phân biệt chữ hoa thường)
-        var match = Regex.Match(transactionContent, @"AROMA_?(\d+)", RegexOptions.IgnoreCase);
+        // Regex tìm mã đơn hàng dạng AROMA<id>, AROMA_<id>, hoặc AROMA <id> (Không phân biệt chữ hoa thường)
+        var match = System.Text.RegularExpressions.Regex.Match(transactionContent, @"AROMA[\s_]*(\d+)", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         if (!match.Success)
         {
+            Console.WriteLine($"[SepayWebhook] Không tìm thấy mã đơn hàng AROMA trong nội dung: {transactionContent}");
             return Ok(new { success = false, message = "Could not parse OrderId from transaction content." });
         }
 
@@ -237,6 +240,7 @@ public class PaymentsController : ControllerBase
         // Xác thực số tiền (Sepay gửi TransferAmount, đơn hàng lưu TotalAmount)
         if (payload.TransferAmount < order.TotalAmount)
         {
+            Console.WriteLine($"[SepayWebhook] Số tiền không khớp. Nhận: {payload.TransferAmount}, Yêu cầu: {order.TotalAmount}");
             return Ok(new { success = false, message = $"Amount mismatch. Received: {payload.TransferAmount}, Required: {order.TotalAmount}" });
         }
 
