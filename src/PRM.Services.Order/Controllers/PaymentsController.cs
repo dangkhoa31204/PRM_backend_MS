@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -137,14 +138,31 @@ public class PaymentsController : ControllerBase
 
     public class SepayWebhookPayload
     {
+        [JsonPropertyName("id")]
         public int Id { get; set; }
+
+        [JsonPropertyName("gateway")]
         public string Gateway { get; set; } = string.Empty;
+
+        [JsonPropertyName("transactionDate")]
         public string TransactionDate { get; set; } = string.Empty;
+
+        [JsonPropertyName("accountNumber")]
         public string AccountNumber { get; set; } = string.Empty;
+
+        [JsonPropertyName("transferType")]
         public string TransferType { get; set; } = string.Empty; // "in" or "out"
+
+        [JsonPropertyName("transferAmount")]
         public decimal TransferAmount { get; set; }
+
+        [JsonPropertyName("transactionContent")]
         public string TransactionContent { get; set; } = string.Empty;
+
+        [JsonPropertyName("content")]
         public string Content { get; set; } = string.Empty; // Trường thực tế Sepay gửi chứa nội dung chuyển khoản
+
+        [JsonPropertyName("referenceCode")] // Map từ referenceCode của Sepay
         public string ReferenceNumber { get; set; } = string.Empty;
     }
 
@@ -154,6 +172,9 @@ public class PaymentsController : ControllerBase
     public async Task<IActionResult> SepayWebhook([FromBody] SepayWebhookPayload payload)
     {
         if (payload == null) return BadRequest("Payload is null.");
+
+        // Log nhận thông tin giao dịch raw để dễ debug
+        Console.WriteLine($"[SepayWebhook] Raw Payload JSON: {System.Text.Json.JsonSerializer.Serialize(payload)}");
 
         // Ưu tiên đọc từ Content (Sepay chuyển khoản thật) rồi mới tới TransactionContent (nút Test giả lập)
         string transactionContent = !string.IsNullOrEmpty(payload.Content) 
