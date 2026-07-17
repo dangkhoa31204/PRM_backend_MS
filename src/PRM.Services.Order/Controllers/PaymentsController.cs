@@ -162,7 +162,7 @@ public class PaymentsController : ControllerBase
         public string TransactionContent { get; set; } = string.Empty;
 
         [JsonPropertyName("content")]
-        public string Content { get; set; } = string.Empty; // Trường thực tế Sepay gửi chứa nội dung chuyển khoản
+        public string SepayContent { get; set; } = string.Empty; // Trường thực tế Sepay gửi chứa nội dung chuyển khoản
 
         [JsonPropertyName("referenceCode")] // Map từ referenceCode của Sepay
         public string ReferenceNumber { get; set; } = string.Empty;
@@ -179,8 +179,8 @@ public class PaymentsController : ControllerBase
         Console.WriteLine($"[SepayWebhook] Raw Payload JSON: {System.Text.Json.JsonSerializer.Serialize(payload)}");
 
         // Ưu tiên đọc từ Content (Sepay chuyển khoản thật) rồi mới tới TransactionContent (nút Test giả lập)
-        string transactionContent = !string.IsNullOrEmpty(payload.Content) 
-            ? payload.Content 
+        string transactionContent = !string.IsNullOrEmpty(payload.SepayContent) 
+            ? payload.SepayContent 
             : payload.TransactionContent;
 
         // Log nhận thông tin giao dịch để dễ debug
