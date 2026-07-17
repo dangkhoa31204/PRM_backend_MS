@@ -139,7 +139,8 @@ public class PaymentsController : ControllerBase
     public class SepayWebhookPayload
     {
         [JsonPropertyName("id")]
-        public int Id { get; set; }
+        [System.Text.Json.Serialization.JsonNumberHandling(System.Text.Json.Serialization.JsonNumberHandling.AllowReadingFromString)]
+        public long Id { get; set; }
 
         [JsonPropertyName("gateway")]
         public string Gateway { get; set; } = string.Empty;
@@ -168,12 +169,40 @@ public class PaymentsController : ControllerBase
         public string ReferenceNumber { get; set; } = string.Empty;
     }
 
+    private static readonly System.Collections.Concurrent.ConcurrentQueue<object> _webhookLogs = new System.Collections.Concurrent.ConcurrentQueue<object>();
+
+    [AllowAnonymous]
+    [HttpGet("webhook-logs")]
+    public IActionResult GetWebhookLogs()
+    {
+        return Ok(_webhookLogs.ToArray());
+    }
+
     /// <summary>Webhook nhận thông báo thanh toán tự động từ Sepay (Public).</summary>
     [AllowAnonymous]
     [HttpPost("sepay-webhook")]
-    public async Task<IActionResult> SepayWebhook([FromBody] SepayWebhookPayload payload)
+    public async Task<IActionResult> SepayWebhook([FromBody] JsonElement rawPayloadElement)
     {
-        if (payload == null) return BadRequest("Payload is null.");
+        // Log raw payload
+        string rawJson = rawPayloadElement.GetRawText();
+        Console.WriteLine($"[SepayWebhook] Raw Payload JSON: {rawJson}");
+        
+        _webhookLogs.Enqueue(new { Time = DateTime.UtcNow, Payload = rawJson });
+        if (_webhookLogs.Count > 50) _webhookLogs.TryDequeue(out _);
+
+        SepayWebhookPayload payload;
+        try
+        {
+            payload = System.Text.Json.JsonSerializer.Deserialize<SepayWebhookPayload>(rawJson);
+        }
+        catch (Exception ex)
+        {
+            _webhookLogs.Enqueue(new { Time = DateTime.UtcNow, Error = "Deserialize failed", Message = ex.Message });
+            return Ok(new { success = false, message = "Deserialize failed: " + ex.Message });
+        }
+
+        if (payload == null)
+            return Ok(new { success = false, message = "Payload is null" });
 
         // Log nhận thông tin giao dịch raw để dễ debug
         Console.WriteLine($"[SepayWebhook] Raw Payload JSON: {System.Text.Json.JsonSerializer.Serialize(payload)}");
