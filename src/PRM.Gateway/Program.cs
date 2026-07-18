@@ -179,11 +179,25 @@ static string GenerateOcelotConfig(string identityUrl, string restaurantUrl, str
           "UpstreamHttpMethod": [ "GET", "POST" ]
         },
         {
+          "DownstreamPathTemplate": "/hubs/staff/negotiate",
+          "DownstreamScheme": "{{order.Scheme}}",
+          "DownstreamHostAndPorts": [{ "Host": "{{order.Host}}", "Port": {{order.Port}} }],
+          "UpstreamPathTemplate": "/hubs/staff/negotiate",
+          "UpstreamHttpMethod": [ "POST" ]
+        },
+        {
           "DownstreamPathTemplate": "/hubs/staff",
           "DownstreamScheme": "{{wsScheme}}",
           "DownstreamHostAndPorts": [{ "Host": "{{order.Host}}", "Port": {{order.Port}} }],
           "UpstreamPathTemplate": "/hubs/staff",
           "UpstreamHttpMethod": [ "GET" ]
+        },
+        {
+          "DownstreamPathTemplate": "/hubs/feedback/negotiate",
+          "DownstreamScheme": "{{order.Scheme}}",
+          "DownstreamHostAndPorts": [{ "Host": "{{order.Host}}", "Port": {{order.Port}} }],
+          "UpstreamPathTemplate": "/hubs/feedback/negotiate",
+          "UpstreamHttpMethod": [ "POST" ]
         },
         {
           "DownstreamPathTemplate": "/hubs/feedback",
