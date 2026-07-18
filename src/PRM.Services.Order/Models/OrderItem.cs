@@ -1,3 +1,5 @@
+using PRM.Services.Order.Models.Enums;
+
 namespace PRM.Services.Order.Models;
 
 public class OrderItem
@@ -8,7 +10,8 @@ public class OrderItem
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public string? Note { get; set; }
-    public int Status { get; set; } = 1; // 1=Pending, 2=Preparing, 3=Ready, 4=Served
+    public DateTime CreatedAt { get; set; }
+    public OrderItemStatus Status { get; set; } = OrderItemStatus.Pending;
 
     // Internal navigation (same DB)
     public virtual Order Order { get; set; } = null!;

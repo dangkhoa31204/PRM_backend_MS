@@ -10,6 +10,7 @@ public class Order
     public string? Note { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }
+    public string PublicToken { get; set; } = Guid.NewGuid().ToString("N"); // Khách dùng để tự tra cứu GetStatus/GetInvoice, tránh đoán orderId
 
     // Internal navigation (same DB)
     public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();

@@ -12,8 +12,8 @@ using PRM.Services.Order.Data;
 namespace PRM.Services.Order.Migrations
 {
     [DbContext(typeof(OrderDbContext))]
-    [Migration("20260718104946_AddOrderItemStatus")]
-    partial class AddOrderItemStatus
+    [Migration("20260718054908_AddOrderPublicToken")]
+    partial class AddOrderPublicToken
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -82,6 +82,11 @@ namespace PRM.Services.Order.Migrations
                     b.Property<string>("Note")
                         .HasColumnType("text");
 
+                    b.Property<string>("PublicToken")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<int>("Status")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -98,6 +103,9 @@ namespace PRM.Services.Order.Migrations
 
                     b.HasKey("OrderId");
 
+                    b.HasIndex("PublicToken")
+                        .IsUnique();
+
                     b.ToTable("Orders");
                 });
 
@@ -108,6 +116,11 @@ namespace PRM.Services.Order.Migrations
                         .HasColumnType("integer");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("OrderItemId"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("NOW()");
 
                     b.Property<int>("MenuItemId")
                         .HasColumnType("integer");
@@ -122,9 +135,7 @@ namespace PRM.Services.Order.Migrations
                         .HasColumnType("integer");
 
                     b.Property<int>("Status")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
+                        .HasColumnType("integer");
 
                     b.Property<decimal>("UnitPrice")
                         .HasColumnType("numeric(18,2)");

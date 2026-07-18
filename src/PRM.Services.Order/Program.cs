@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PRM.Services.Order.Clients;
@@ -6,6 +8,7 @@ using PRM.Services.Order.Data;
 using PRM.Services.Order.Hubs;
 using PRM.Services.Order.Notifications;
 using System.Text;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,6 +35,10 @@ builder.Services.AddScoped<INotificationService, SignalRNotificationService>();
 
 // JWT Auth
 var jwtKey = builder.Configuration["Jwt:Key"] ?? string.Empty;
+if (string.IsNullOrEmpty(jwtKey) || jwtKey.Length < 32 || jwtKey.Contains("CHANGE_ME", StringComparison.OrdinalIgnoreCase))
+{
+    Console.WriteLine("[STARTUP] CẢNH BÁO NGHIÊM TRỌNG: Jwt:Key đang rỗng/yếu/placeholder — mọi JWT có thể bị giả mạo. Đặt 1 khoá ngẫu nhiên mạnh (>=32 ký tự) trước khi lên production.");
+}
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -86,7 +93,33 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
     p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 
+// Rate limit cho endpoint public tạo/sửa đơn (PlaceOrder, AddItems) — chặn spam đơn ảo.
+// Partition theo IP để mỗi khách/bàn có hạn mức riêng, không dùng chung 1 bucket toàn hệ thống.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("order-write", httpContext => RateLimitPartition.GetFixedWindowLimiter(
+        partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        factory: _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 20,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0
+        }));
+});
+
 var app = builder.Build();
+
+// Mọi traffic đi qua PRM.Gateway (Ocelot) — nếu không đọc X-Forwarded-For thì
+// Connection.RemoteIpAddress luôn là IP của Gateway, khiến rate limiter (theo IP,
+// xem AddRateLimiter phía trên) gộp chung mọi khách vào 1 hạn mức. Gateway đã được
+// cấu hình gắn IP khách thật vào header này trước khi proxy xuống đây.
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor,
+    KnownNetworks = { },
+    KnownProxies = { }
+});
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -94,6 +127,7 @@ app.UseSwaggerUI();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapGet("/", () => "PRM Order Service Running - Port 5003");
 app.MapControllers();

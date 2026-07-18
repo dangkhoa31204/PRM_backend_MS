@@ -1,11 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace PRM.Services.Order.Migrations
 {
     /// <inheritdoc />
-    public partial class AddOrderItemStatus : Migration
+    public partial class AddOrderItemTrackingFields : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -19,17 +20,28 @@ namespace PRM.Services.Order.Migrations
                 oldType: "integer",
                 oldDefaultValue: 1);
 
+            migrationBuilder.AddColumn<DateTime>(
+                name: "CreatedAt",
+                table: "OrderItems",
+                type: "timestamp with time zone",
+                nullable: false,
+                defaultValueSql: "NOW()");
+
             migrationBuilder.AddColumn<int>(
                 name: "Status",
                 table: "OrderItems",
                 type: "integer",
                 nullable: false,
-                defaultValue: 1);
+                defaultValue: 1); // OrderItemStatus.Pending — backfill cho các dòng đã tồn tại
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropColumn(
+                name: "CreatedAt",
+                table: "OrderItems");
+
             migrationBuilder.DropColumn(
                 name: "Status",
                 table: "OrderItems");

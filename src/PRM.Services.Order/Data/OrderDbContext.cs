@@ -23,6 +23,8 @@ public class OrderDbContext : DbContext
             e.Property(o => o.Status).HasDefaultValue(1);
             e.Property(o => o.TotalAmount).HasColumnType("numeric(18,2)");
             e.Property(o => o.CreatedAt).HasDefaultValueSql("NOW()");
+            e.Property(o => o.PublicToken).IsRequired().HasMaxLength(32);
+            e.HasIndex(o => o.PublicToken).IsUnique();
             // No HasForeignKey for TableId or HandledBy
         });
 
@@ -31,7 +33,8 @@ public class OrderDbContext : DbContext
         {
             e.HasKey(oi => oi.OrderItemId);
             e.Property(oi => oi.UnitPrice).HasColumnType("numeric(18,2)");
-            e.Property(oi => oi.Status).HasDefaultValue(1);
+            e.Property(oi => oi.CreatedAt).HasDefaultValueSql("NOW()");
+            e.Property(oi => oi.Status).HasConversion<int>(); // Default set in application code (Pending=1)
             e.HasOne(oi => oi.Order)
              .WithMany(o => o.OrderItems)
              .HasForeignKey(oi => oi.OrderId)

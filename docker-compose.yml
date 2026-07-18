@@ -64,7 +64,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=db-identity;Port=5432;Database=prm_identity_db;Username=postgres;Password=postgres
-      - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
+      - Jwt__Key=oSjI2jacQSRtdRldeiGocMJwzLRGtduA6fyk3oPQJoQTb02M11uHhoQV306wH8nt
       - Jwt__Issuer=PRM.Services.Identity
       - Jwt__Audience=PRM.Services
     depends_on:
@@ -81,7 +81,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=db-restaurant;Port=5432;Database=prm_restaurant_db;Username=postgres;Password=postgres
-      - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
+      - Jwt__Key=oSjI2jacQSRtdRldeiGocMJwzLRGtduA6fyk3oPQJoQTb02M11uHhoQV306wH8nt
       - Jwt__Issuer=PRM.Services.Identity
       - Jwt__Audience=PRM.Services
       - AppBaseUrl=http://localhost:5000
@@ -98,11 +98,14 @@ services:
       dockerfile: src/PRM.Services.Order/Dockerfile
     container_name: prm-order
     ports:
-      - "5003:8080"
+      # Chỉ bind localhost — Order chỉ nên vào qua Gateway (port 5000). Bind ra ngoài
+      # (như trước) cho phép bỏ qua Gateway, tự chế X-Forwarded-For để vô hiệu hoá
+      # rate limiter theo IP (UseForwardedHeaders đang tin header này vô điều kiện).
+      - "127.0.0.1:5003:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=db-order;Port=5432;Database=prm_order_db;Username=postgres;Password=postgres
-      - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
+      - Jwt__Key=oSjI2jacQSRtdRldeiGocMJwzLRGtduA6fyk3oPQJoQTb02M11uHhoQV306wH8nt
       - Jwt__Issuer=PRM.Services.Identity
       - Jwt__Audience=PRM.Services
       - Services__RestaurantService=http://restaurant-service:8080/
@@ -121,7 +124,7 @@ services:
       - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - Jwt__Key=PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024
+      - Jwt__Key=oSjI2jacQSRtdRldeiGocMJwzLRGtduA6fyk3oPQJoQTb02M11uHhoQV306wH8nt
       - Jwt__Issuer=PRM.Services.Identity
       - Jwt__Audience=PRM.Services
       - Proxy__Services__Identity=http://identity-service:8080
