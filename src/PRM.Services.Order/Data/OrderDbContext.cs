@@ -23,6 +23,8 @@ public class OrderDbContext : DbContext
             e.Property(o => o.Status).HasDefaultValue(1);
             e.Property(o => o.TotalAmount).HasColumnType("numeric(18,2)");
             e.Property(o => o.CreatedAt).HasDefaultValueSql("NOW()");
+            e.Property(o => o.PublicToken).IsRequired().HasMaxLength(32);
+            e.HasIndex(o => o.PublicToken).IsUnique();
             // No HasForeignKey for TableId or HandledBy
         });
 
