@@ -19,15 +19,18 @@ public class PaymentsController : ControllerBase
     private readonly OrderDbContext _context;
     private readonly INotificationService _notify;
     private readonly IRestaurantServiceClient _restaurant;
+    private readonly IConfiguration _config;
 
     public PaymentsController(
         OrderDbContext context,
         INotificationService notify,
-        IRestaurantServiceClient restaurant)
+        IRestaurantServiceClient restaurant,
+        IConfiguration config)
     {
         _context = context;
         _notify = notify;
         _restaurant = restaurant;
+        _config = config;
     }
 
     // --- DTOs ---
@@ -172,7 +175,7 @@ public class PaymentsController : ControllerBase
 
     private static readonly System.Collections.Concurrent.ConcurrentQueue<object> _webhookLogs = new System.Collections.Concurrent.ConcurrentQueue<object>();
 
-    [AllowAnonymous]
+    [Authorize(Roles = "1")]
     [HttpGet("webhook-logs")]
     public IActionResult GetWebhookLogs()
     {
@@ -184,10 +187,27 @@ public class PaymentsController : ControllerBase
     [HttpPost("sepay-webhook")]
     public async Task<IActionResult> SepayWebhook([FromBody] JsonElement rawPayloadElement)
     {
-        // Log raw payload
+        // Xác thực webhook bằng API key (Sepay gửi header "Authorization: Apikey <key>").
+        // Soft-check: nếu WebhookApiKey CHƯA được cấu hình (rỗng) thì chỉ log cảnh báo,
+        // không chặn — tránh chặn nhầm thanh toán thật trong lúc Sepay dashboard/config
+        // chưa được set khớp nhau. Một khi đã cấu hình cả 2 phía, request sai key sẽ bị 401.
+        var expectedKey = _config["Sepay:WebhookApiKey"];
+        var authHeader = Request.Headers.Authorization.ToString();
+        if (string.IsNullOrEmpty(expectedKey))
+        {
+            Console.WriteLine("[SepayWebhook] CẢNH BÁO: Sepay:WebhookApiKey chưa được cấu hình — webhook đang KHÔNG được xác thực, dễ bị giả mạo. Cấu hình Sepay dashboard + appsettings để bật bảo vệ.");
+        }
+        else if (authHeader != $"Apikey {expectedKey}")
+        {
+            Console.WriteLine("[SepayWebhook] Từ chối request: header Authorization không khớp API key đã cấu hình.");
+            return Unauthorized();
+        }
+
+        // Payload đầy đủ (kèm số tài khoản ngân hàng) chỉ lưu vào _webhookLogs (nay yêu cầu
+        // Admin mới xem được, xem Phần I) — KHÔNG in ra console log để tránh lộ dữ liệu ngân
+        // hàng thật ra hệ thống log tổng hợp.
         string rawJson = rawPayloadElement.GetRawText();
-        Console.WriteLine($"[SepayWebhook] Raw Payload JSON: {rawJson}");
-        
+
         _webhookLogs.Enqueue(new { Time = DateTime.UtcNow, Payload = rawJson });
         if (_webhookLogs.Count > 50) _webhookLogs.TryDequeue(out _);
 
@@ -205,8 +225,8 @@ public class PaymentsController : ControllerBase
         if (payload == null)
             return Ok(new { success = false, message = "Payload is null" });
 
-        // Log nhận thông tin giao dịch raw để dễ debug
-        Console.WriteLine($"[SepayWebhook] Raw Payload JSON: {System.Text.Json.JsonSerializer.Serialize(payload)}");
+        // Log tóm tắt (không có số tài khoản) để dễ debug mà không lộ dữ liệu ngân hàng
+        Console.WriteLine($"[SepayWebhook] Nhận payload: Gateway={payload.Gateway}, TransferType={payload.TransferType}, ReferenceNumber={payload.ReferenceNumber}");
 
         // Ưu tiên đọc từ Content (Sepay chuyển khoản thật) rồi mới tới TransactionContent (nút Test giả lập)
         string transactionContent = !string.IsNullOrEmpty(payload.SepayContent) 
@@ -251,11 +271,12 @@ public class PaymentsController : ControllerBase
                 var items = dbItems.Select(oi => new OrdersController.OrderItemResponse(
                     oi.OrderItemId, oi.MenuItemId,
                     menuItems?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
-                    oi.Quantity, oi.UnitPrice, oi.Note)).ToList();
+                    oi.Quantity, oi.UnitPrice, oi.Note,
+                    oi.CreatedAt, OrdersController.GetItemStatusLabel(oi.Status))).ToList();
 
                 var orderResponse = new OrdersController.OrderResponse(
                     order.OrderId, order.TableId, order.Status,
-                    order.Status == 4 ? "Completed" : "Cancelled", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items);
+                    order.Status == 4 ? "Completed" : "Cancelled", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken);
 
                 await _notify.NotifyOrderStatusUpdatedAsync(orderResponse);
             }
@@ -329,11 +350,12 @@ public class PaymentsController : ControllerBase
             var items = dbItems.Select(oi => new OrdersController.OrderItemResponse(
                 oi.OrderItemId, oi.MenuItemId,
                 menuItems?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
-                oi.Quantity, oi.UnitPrice, oi.Note)).ToList();
+                oi.Quantity, oi.UnitPrice, oi.Note,
+                oi.CreatedAt, OrdersController.GetItemStatusLabel(oi.Status))).ToList();
 
             var orderResponse = new OrdersController.OrderResponse(
                 order.OrderId, order.TableId, order.Status,
-                "Completed", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items);
+                "Completed", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken);
 
             await _notify.NotifyOrderStatusUpdatedAsync(orderResponse);
         }
