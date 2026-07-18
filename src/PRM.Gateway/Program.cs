@@ -46,6 +46,18 @@ app.UseAuthentication();
 
 app.Use(async (context, next) =>
 {
+    if (context.Request.Path == "/debug-config")
+    {
+        var config = context.RequestServices.GetRequiredService<IConfiguration>();
+        context.Response.ContentType = "application/json; charset=utf-8";
+        var info = new {
+            Identity = config["Proxy:Services:Identity"],
+            Restaurant = config["Proxy:Services:Restaurant"],
+            Order = config["Proxy:Services:Order"]
+        };
+        await context.Response.WriteAsJsonAsync(info);
+        return;
+    }
     if (context.Request.Path == "/")
     {
         context.Response.ContentType = "text/plain; charset=utf-8";
