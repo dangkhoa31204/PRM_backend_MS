@@ -65,7 +65,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=db-identity;Port=5432;Database=prm_identity_db;Username=postgres;Password=${DB_IDENTITY_PASSWORD:-postgres_secure_pass_1}
-      - Jwt__Key=${JWT_KEY:-PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024}
+      - Jwt__Key=${JWT_KEY:-oSjI2jacQSRtdRldeiGocMJwzLRGtduA6fyk3oPQJoQTb02M11uHhoQV306wH8nt}
       - Jwt__Issuer=${JWT_ISSUER:-PRM.Services.Identity}
       - Jwt__Audience=${JWT_AUDIENCE:-PRM.Services}
     depends_on:
@@ -83,7 +83,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=db-restaurant;Port=5432;Database=prm_restaurant_db;Username=postgres;Password=${DB_RESTAURANT_PASSWORD:-postgres_secure_pass_2}
-      - Jwt__Key=${JWT_KEY:-PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024}
+      - Jwt__Key=${JWT_KEY:-oSjI2jacQSRtdRldeiGocMJwzLRGtduA6fyk3oPQJoQTb02M11uHhoQV306wH8nt}
       - Jwt__Issuer=${JWT_ISSUER:-PRM.Services.Identity}
       - Jwt__Audience=${JWT_AUDIENCE:-PRM.Services}
       - AppBaseUrl=${APP_BASE_URL:-http://localhost:5000}
@@ -105,7 +105,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=db-order;Port=5432;Database=prm_order_db;Username=postgres;Password=${DB_ORDER_PASSWORD:-postgres_secure_pass_3}
-      - Jwt__Key=${JWT_KEY:-PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024}
+      - Jwt__Key=${JWT_KEY:-oSjI2jacQSRtdRldeiGocMJwzLRGtduA6fyk3oPQJoQTb02M11uHhoQV306wH8nt}
       - Jwt__Issuer=${JWT_ISSUER:-PRM.Services.Identity}
       - Jwt__Audience=${JWT_AUDIENCE:-PRM.Services}
       - Services__RestaurantService=http://restaurant-service:8080/
@@ -126,7 +126,7 @@ services:
       - "5000:8080" # Có thể đổi thành "127.0.0.1:5000:8080" nếu dùng Nginx Reverse Proxy
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
-      - Jwt__Key=${JWT_KEY:-PRM_SUPER_SECRET_KEY_CHANGE_ME_IN_PRODUCTION_2024}
+      - Jwt__Key=${JWT_KEY:-oSjI2jacQSRtdRldeiGocMJwzLRGtduA6fyk3oPQJoQTb02M11uHhoQV306wH8nt}
       - Jwt__Issuer=${JWT_ISSUER:-PRM.Services.Identity}
       - Jwt__Audience=${JWT_AUDIENCE:-PRM.Services}
       - Proxy__Services__Identity=http://identity-service:8080
