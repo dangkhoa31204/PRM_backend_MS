@@ -356,12 +356,8 @@ public class PaymentsController : ControllerBase
             var items = dbItems.Select(oi => new OrdersController.OrderItemResponse(
                 oi.OrderItemId, oi.MenuItemId,
                 menuItems?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
-<<<<<<< HEAD
-                oi.Quantity, oi.UnitPrice, oi.Note, oi.Status, OrdersController.GetOrderItemStatusLabel(oi.Status))).ToList();
-=======
                 oi.Quantity, oi.UnitPrice, oi.Note,
-                oi.CreatedAt, OrdersController.GetItemStatusLabel(oi.Status))).ToList();
->>>>>>> origin/master
+                (int)oi.Status, OrdersController.GetItemStatusLabel(oi.Status))).ToList();
 
             var orderResponse = new OrdersController.OrderResponse(
                 order.OrderId, order.TableId, order.Status,
