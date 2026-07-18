@@ -11,7 +11,7 @@ services:
         value: 8080
       - key: ConnectionStrings__DefaultConnection
         fromDatabase:
-          name: prm-db
+          name: prm-db-new
           property: connectionString
       - key: Jwt__Key
         sync: false
@@ -32,7 +32,7 @@ services:
         value: 8080
       - key: ConnectionStrings__DefaultConnection
         fromDatabase:
-          name: prm-db
+          name: prm-db-new
           property: connectionString
       - key: Jwt__Key
         sync: false
@@ -61,7 +61,7 @@ services:
         value: 8080
       - key: ConnectionStrings__DefaultConnection
         fromDatabase:
-          name: prm-db
+          name: prm-db-new
           property: connectionString
       - key: Jwt__Key
         sync: false
@@ -97,7 +97,7 @@ services:
 
 databases:
   # 5. PostgreSQL Database (Dùng chung cho 3 Service)
-  - name: prm-db
-    databaseName: prm_db
+  - name: prm-db-new
+    databaseName: prm_db_new
     user: prm_user
     plan: free
