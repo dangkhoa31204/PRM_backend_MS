@@ -324,7 +324,7 @@ public class PaymentsController : ControllerBase
         var orderItemsToUpdate = await _context.OrderItems.Where(oi => oi.OrderId == orderId).ToListAsync();
         foreach(var item in orderItemsToUpdate)
         {
-            item.Status = 4; // Served
+            item.Status = OrderItemStatus.Served; // Served
         }
 
         // Giải phóng bàn ăn nếu bàn không còn đơn nào khác đang hoạt động

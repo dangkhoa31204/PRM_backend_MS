@@ -76,6 +76,7 @@ public class OrdersController : ControllerBase
         var items = dbItems.Select(oi => new OrderItemResponse(
             oi.OrderItemId, oi.MenuItemId,
             menuItemMap?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
+            oi.Quantity, oi.UnitPrice, oi.Note,
             (int)oi.Status, GetItemStatusLabel(oi.Status))).ToList();
 
         return new OrderResponse(
@@ -319,8 +320,8 @@ public class OrdersController : ControllerBase
             var orderItems = await _context.OrderItems.Where(oi => oi.OrderId == id).ToListAsync();
             foreach (var item in orderItems)
             {
-                if (request.Status == 4) item.Status = 4; // Served
-                if (request.Status == 5) item.Status = 1; // Or whatever is handled for Cancelled, but usually items don't have cancelled. Let's just not touch it, or set to 4 if completed.
+                if (request.Status == 4) item.Status = OrderItemStatus.Served; // Served
+                if (request.Status == 5) item.Status = OrderItemStatus.Pending; 
             }
         }
 
@@ -332,30 +333,7 @@ public class OrdersController : ControllerBase
         return Ok(response);
     }
 
-    /// <summary>Cập nhật trạng thái món ăn (Kitchen/Staff).</summary>
-    [Authorize(Roles = "1,2")]
-    [HttpPatch("{id:int}/items/{itemId:int}/status")]
-    public async Task<ActionResult<OrderResponse>> UpdateItemStatus(int id, int itemId, [FromBody] UpdateStatusRequest request)
-    {
-        if (request.Status < 1 || request.Status > 4)
-            return BadRequest("Item Status must be between 1 (Pending) and 4 (Served).");
 
-        var order = await _context.Orders.FindAsync(id);
-        if (order == null) return NotFound($"Order {id} not found.");
-
-        var item = await _context.OrderItems.FirstOrDefaultAsync(oi => oi.OrderId == id && oi.OrderItemId == itemId);
-        if (item == null) return NotFound($"Order item {itemId} not found in order {id}.");
-
-        item.Status = request.Status;
-        order.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
-
-        var response = await BuildResponse(order);
-        await _notify.NotifyOrderUpdatedAsync(response);
-
-        return Ok(response);
-    }
 
     /// <summary>Xuất hóa đơn dạng HTML cho đơn hàng đã hoàn thành (Public).</summary>
     [AllowAnonymous]
