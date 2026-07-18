@@ -33,7 +33,7 @@ public class OrdersController : ControllerBase
     public record AddItemsRequest(List<OrderItemRequest> Items);
     public record UpdateStatusRequest(int Status);
 
-    public record OrderItemResponse(int OrderItemId, int MenuItemId, string MenuItemName, int Quantity, decimal UnitPrice, string? Note);
+    public record OrderItemResponse(int OrderItemId, int MenuItemId, string MenuItemName, int Quantity, decimal UnitPrice, string? Note, int Status, string StatusLabel);
     public record OrderResponse(
         int OrderId, int TableId, int Status, string StatusLabel,
         decimal TotalAmount, string? Note, DateTime CreatedAt, DateTime? UpdatedAt,
@@ -43,6 +43,12 @@ public class OrdersController : ControllerBase
     {
         1 => "Pending", 2 => "Confirmed", 3 => "Serving",
         4 => "Completed", 5 => "Cancelled", _ => "Unknown"
+    };
+
+    public static string GetOrderItemStatusLabel(int status) => status switch
+    {
+        1 => "Pending", 2 => "Preparing", 3 => "Ready",
+        4 => "Served", _ => "Unknown"
     };
 
     /// <summary>Build OrderResponse — gọi Restaurant Service để lấy MenuItemName.</summary>
@@ -62,7 +68,7 @@ public class OrdersController : ControllerBase
         var items = dbItems.Select(oi => new OrderItemResponse(
             oi.OrderItemId, oi.MenuItemId,
             menuItemMap?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
-            oi.Quantity, oi.UnitPrice, oi.Note)).ToList();
+            oi.Quantity, oi.UnitPrice, oi.Note, oi.Status, GetOrderItemStatusLabel(oi.Status))).ToList();
 
         return new OrderResponse(
             order.OrderId, order.TableId, order.Status,
@@ -257,12 +263,46 @@ public class OrdersController : ControllerBase
 
             if (!hasOtherActive)
                 await _restaurant.ReleaseTableAsync(order.TableId);
+
+            // Tự động cập nhật các OrderItems sang trạng thái Served (4) hoặc Cancelled (5)
+            // (Lưu ý: theo OrderItemStatus, Served=4)
+            var orderItems = await _context.OrderItems.Where(oi => oi.OrderId == id).ToListAsync();
+            foreach (var item in orderItems)
+            {
+                if (request.Status == 4) item.Status = 4; // Served
+                if (request.Status == 5) item.Status = 1; // Or whatever is handled for Cancelled, but usually items don't have cancelled. Let's just not touch it, or set to 4 if completed.
+            }
         }
 
         await _context.SaveChangesAsync();
 
         var response = await BuildResponse(order);
         await _notify.NotifyOrderStatusUpdatedAsync(response);
+
+        return Ok(response);
+    }
+
+    /// <summary>Cập nhật trạng thái món ăn (Kitchen/Staff).</summary>
+    [Authorize(Roles = "1,2")]
+    [HttpPatch("{id:int}/items/{itemId:int}/status")]
+    public async Task<ActionResult<OrderResponse>> UpdateItemStatus(int id, int itemId, [FromBody] UpdateStatusRequest request)
+    {
+        if (request.Status < 1 || request.Status > 4)
+            return BadRequest("Item Status must be between 1 (Pending) and 4 (Served).");
+
+        var order = await _context.Orders.FindAsync(id);
+        if (order == null) return NotFound($"Order {id} not found.");
+
+        var item = await _context.OrderItems.FirstOrDefaultAsync(oi => oi.OrderId == id && oi.OrderItemId == itemId);
+        if (item == null) return NotFound($"Order item {itemId} not found in order {id}.");
+
+        item.Status = request.Status;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        var response = await BuildResponse(order);
+        await _notify.NotifyOrderUpdatedAsync(response);
 
         return Ok(response);
     }

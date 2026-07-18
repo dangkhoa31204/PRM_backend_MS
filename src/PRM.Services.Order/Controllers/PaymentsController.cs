@@ -251,7 +251,7 @@ public class PaymentsController : ControllerBase
                 var items = dbItems.Select(oi => new OrdersController.OrderItemResponse(
                     oi.OrderItemId, oi.MenuItemId,
                     menuItems?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
-                    oi.Quantity, oi.UnitPrice, oi.Note)).ToList();
+                    oi.Quantity, oi.UnitPrice, oi.Note, oi.Status, OrdersController.GetOrderItemStatusLabel(oi.Status))).ToList();
 
                 var orderResponse = new OrdersController.OrderResponse(
                     order.OrderId, order.TableId, order.Status,
@@ -300,6 +300,12 @@ public class PaymentsController : ControllerBase
         order.Status = 4;
         order.UpdatedAt = DateTime.UtcNow;
 
+        var orderItemsToUpdate = await _context.OrderItems.Where(oi => oi.OrderId == orderId).ToListAsync();
+        foreach(var item in orderItemsToUpdate)
+        {
+            item.Status = 4; // Served
+        }
+
         // Giải phóng bàn ăn nếu bàn không còn đơn nào khác đang hoạt động
         var hasOtherActive = await _context.Orders
             .AnyAsync(o => o.TableId == order.TableId && o.OrderId != orderId && o.Status < 4);
@@ -329,7 +335,7 @@ public class PaymentsController : ControllerBase
             var items = dbItems.Select(oi => new OrdersController.OrderItemResponse(
                 oi.OrderItemId, oi.MenuItemId,
                 menuItems?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
-                oi.Quantity, oi.UnitPrice, oi.Note)).ToList();
+                oi.Quantity, oi.UnitPrice, oi.Note, oi.Status, OrdersController.GetOrderItemStatusLabel(oi.Status))).ToList();
 
             var orderResponse = new OrdersController.OrderResponse(
                 order.OrderId, order.TableId, order.Status,

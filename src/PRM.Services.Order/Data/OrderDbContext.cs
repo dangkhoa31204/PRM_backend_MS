@@ -31,6 +31,7 @@ public class OrderDbContext : DbContext
         {
             e.HasKey(oi => oi.OrderItemId);
             e.Property(oi => oi.UnitPrice).HasColumnType("numeric(18,2)");
+            e.Property(oi => oi.Status).HasDefaultValue(1);
             e.HasOne(oi => oi.Order)
              .WithMany(o => o.OrderItems)
              .HasForeignKey(oi => oi.OrderId)
