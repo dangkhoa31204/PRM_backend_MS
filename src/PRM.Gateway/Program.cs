@@ -55,6 +55,17 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Gắn IP khách thật vào X-Forwarded-For trước khi Ocelot proxy xuống downstream —
+// nếu không, các service phía sau (vd. rate limiter ở Order) chỉ thấy IP của Gateway,
+// khiến mọi khách hàng bị gộp chung 1 hạn mức.
+app.Use(async (context, next) =>
+{
+    var clientIp = context.Connection.RemoteIpAddress?.ToString();
+    if (!string.IsNullOrEmpty(clientIp))
+        context.Request.Headers["X-Forwarded-For"] = clientIp;
+    await next();
+});
+
 await app.UseOcelot();
 
 app.Run();
