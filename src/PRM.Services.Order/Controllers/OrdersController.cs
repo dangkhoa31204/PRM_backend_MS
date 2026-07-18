@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PRM.Services.Order.Clients;
 using PRM.Services.Order.Data;
@@ -32,17 +33,30 @@ public class OrdersController : ControllerBase
     public record PlaceOrderRequest(int TableId, List<OrderItemRequest> Items, string? Note);
     public record AddItemsRequest(List<OrderItemRequest> Items);
     public record UpdateStatusRequest(int Status);
+    public record UpdateItemStatusRequest(OrderItemStatus Status);
 
-    public record OrderItemResponse(int OrderItemId, int MenuItemId, string MenuItemName, int Quantity, decimal UnitPrice, string? Note);
+    public record OrderItemResponse(
+        int OrderItemId, int MenuItemId, string MenuItemName, int Quantity, decimal UnitPrice, string? Note,
+        DateTime CreatedAt, string StatusLabel);
     public record OrderResponse(
         int OrderId, int TableId, int Status, string StatusLabel,
         decimal TotalAmount, string? Note, DateTime CreatedAt, DateTime? UpdatedAt,
-        List<OrderItemResponse> Items);
+        List<OrderItemResponse> Items, string PublicToken);
+    public record OrderStatusResponse(int OrderId, int Status, string StatusLabel, bool IsPaid, DateTime? PaidAt);
 
     private static string GetStatusLabel(int status) => status switch
     {
         1 => "Pending", 2 => "Confirmed", 3 => "Serving",
         4 => "Completed", 5 => "Cancelled", _ => "Unknown"
+    };
+
+    internal static string GetItemStatusLabel(OrderItemStatus status) => status switch
+    {
+        OrderItemStatus.Pending => "Chờ chế biến",
+        OrderItemStatus.Preparing => "Đang chế biến",
+        OrderItemStatus.Ready => "Sẵn sàng",
+        OrderItemStatus.Served => "Đã phục vụ",
+        _ => "Unknown"
     };
 
     /// <summary>Build OrderResponse — gọi Restaurant Service để lấy MenuItemName.</summary>
@@ -62,16 +76,18 @@ public class OrdersController : ControllerBase
         var items = dbItems.Select(oi => new OrderItemResponse(
             oi.OrderItemId, oi.MenuItemId,
             menuItemMap?.GetValueOrDefault(oi.MenuItemId)?.Name ?? $"Item #{oi.MenuItemId}",
-            oi.Quantity, oi.UnitPrice, oi.Note)).ToList();
+            oi.Quantity, oi.UnitPrice, oi.Note,
+            oi.CreatedAt, GetItemStatusLabel(oi.Status))).ToList();
 
         return new OrderResponse(
             order.OrderId, order.TableId, order.Status,
             GetStatusLabel(order.Status), order.TotalAmount,
-            order.Note, order.CreatedAt, order.UpdatedAt, items);
+            order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken);
     }
 
     /// <summary>Khách đặt món mới qua QR (Public).</summary>
     [AllowAnonymous]
+    [EnableRateLimiting("order-write")]
     [HttpPost]
     public async Task<ActionResult<OrderResponse>> PlaceOrder([FromBody] PlaceOrderRequest request)
     {
@@ -116,7 +132,8 @@ public class OrdersController : ControllerBase
             MenuItemId = i.MenuItemId,
             Quantity = i.Quantity,
             UnitPrice = menuItems[i.MenuItemId].Price,
-            Note = i.Note
+            Note = i.Note,
+            CreatedAt = DateTime.UtcNow
         }).ToList();
 
         _context.OrderItems.AddRange(orderItems);
@@ -133,14 +150,16 @@ public class OrdersController : ControllerBase
 
     /// <summary>Khách gọi thêm món vào đơn đang mở (Public).</summary>
     [AllowAnonymous]
+    [EnableRateLimiting("order-write")]
     [HttpPost("{id:int}/items")]
-    public async Task<ActionResult<OrderResponse>> AddItems(int id, [FromBody] AddItemsRequest request)
+    public async Task<ActionResult<OrderResponse>> AddItems(int id, [FromQuery] string token, [FromBody] AddItemsRequest request)
     {
         if (request.Items == null || request.Items.Count == 0)
             return BadRequest("Must provide at least one item.");
 
         var order = await _context.Orders.FindAsync(id);
-        if (order == null) return NotFound($"Order {id} not found.");
+        // Không phân biệt "không tồn tại" với "token sai" — tránh lộ thông tin orderId có tồn tại hay không.
+        if (order == null || string.IsNullOrEmpty(token) || order.PublicToken != token) return NotFound($"Order {id} not found.");
         if (order.Status >= 4) return Conflict("Cannot add items to a completed or cancelled order.");
 
         var menuItemIds = request.Items.Select(i => i.MenuItemId).Distinct().ToList();
@@ -158,7 +177,8 @@ public class OrdersController : ControllerBase
         var newItems = request.Items.Select(i => new OrderItem
         {
             OrderId = id, MenuItemId = i.MenuItemId,
-            Quantity = i.Quantity, UnitPrice = menuItems[i.MenuItemId].Price, Note = i.Note
+            Quantity = i.Quantity, UnitPrice = menuItems[i.MenuItemId].Price, Note = i.Note,
+            CreatedAt = DateTime.UtcNow
         }).ToList();
 
         _context.OrderItems.AddRange(newItems);
@@ -168,6 +188,27 @@ public class OrdersController : ControllerBase
         await _context.SaveChangesAsync();
 
         var response = await BuildResponse(order, menuItems);
+        await _notify.NotifyOrderUpdatedAsync(response);
+
+        return Ok(response);
+    }
+
+    /// <summary>Cập nhật trạng thái chế biến của 1 món trong đơn (Staff/Bếp).</summary>
+    [Authorize(Roles = "1,2")]
+    [HttpPatch("{orderId:int}/items/{itemId:int}/status")]
+    public async Task<ActionResult<OrderResponse>> UpdateItemStatus(int orderId, int itemId, [FromBody] UpdateItemStatusRequest request)
+    {
+        var order = await _context.Orders.FindAsync(orderId);
+        if (order == null) return NotFound($"Order {orderId} not found.");
+        if (order.Status >= 4) return Conflict("Cannot update item status on a completed or cancelled order.");
+
+        var item = await _context.OrderItems.FirstOrDefaultAsync(oi => oi.OrderItemId == itemId && oi.OrderId == orderId);
+        if (item == null) return NotFound($"Item {itemId} not found in order {orderId}.");
+
+        item.Status = request.Status;
+        await _context.SaveChangesAsync();
+
+        var response = await BuildResponse(order);
         await _notify.NotifyOrderUpdatedAsync(response);
 
         return Ok(response);
@@ -212,6 +253,20 @@ public class OrdersController : ControllerBase
         return Ok(responses);
     }
 
+    /// <summary>Khách tự kiểm tra trạng thái đơn/thanh toán bằng orderId (Public). Dùng để poll sau khi thanh toán, vì GetByTable ẩn đơn khỏi kết quả ngay khi Completed.</summary>
+    [AllowAnonymous]
+    [HttpGet("{id:int}/status")]
+    public async Task<ActionResult<OrderStatusResponse>> GetStatus(int id, [FromQuery] string token)
+    {
+        var order = await _context.Orders.Include(o => o.Payment).FirstOrDefaultAsync(o => o.OrderId == id);
+        // Không phân biệt "không tồn tại" với "token sai" — tránh lộ thông tin orderId có tồn tại hay không.
+        if (order == null || string.IsNullOrEmpty(token) || order.PublicToken != token) return NotFound($"Order {id} not found.");
+
+        return Ok(new OrderStatusResponse(
+            order.OrderId, order.Status, GetStatusLabel(order.Status),
+            order.Payment?.Status == PaymentStatus.Paid, order.Payment?.PaidAt));
+    }
+
     /// <summary>Cập nhật trạng thái đơn (Staff/Admin).</summary>
     [Authorize(Roles = "1,2")]
     [HttpPatch("{id:int}/status")]
@@ -222,6 +277,8 @@ public class OrdersController : ControllerBase
 
         var order = await _context.Orders.FindAsync(id);
         if (order == null) return NotFound($"Order {id} not found.");
+        if (order.Status >= 4 && request.Status != order.Status)
+            return Conflict("Cannot change status of a completed or cancelled order.");
 
         // Lấy accountId từ JWT token
         var accountIdClaim = User.FindFirst(JwtRegisteredClaimNames.Sub) ?? User.FindFirst("sub");
@@ -270,11 +327,11 @@ public class OrdersController : ControllerBase
     /// <summary>Xuất hóa đơn dạng HTML cho đơn hàng đã hoàn thành (Public).</summary>
     [AllowAnonymous]
     [HttpGet("{id:int}/invoice")]
-    public async Task<IActionResult> GetInvoice(int id)
+    public async Task<IActionResult> GetInvoice(int id, [FromQuery] string token)
     {
         var order = await _context.Orders.Include(o => o.Payment).FirstOrDefaultAsync(o => o.OrderId == id);
-        if (order == null) return NotFound($"Order {id} not found.");
-        
+        if (order == null || string.IsNullOrEmpty(token) || order.PublicToken != token) return NotFound($"Order {id} not found.");
+
         var dbItems = await _context.OrderItems.Where(oi => oi.OrderId == id).ToListAsync();
         var ids = dbItems.Select(oi => oi.MenuItemId).Distinct();
         var menuItems = await _restaurant.ValidateAndGetItemsAsync(ids);
