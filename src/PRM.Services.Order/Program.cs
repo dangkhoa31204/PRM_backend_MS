@@ -14,7 +14,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    options.HandshakeTimeout = TimeSpan.FromSeconds(60);
+});
 
 // Database
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
