@@ -78,16 +78,17 @@ services:
     env: docker
     dockerfilePath: src/PRM.Services.AI/Dockerfile
     dockerContext: .
+    autoDeploy: true
     plan: free
     envVars:
       - key: PORT
         value: 8080
       - key: Qwen__BaseUrl
-        value: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+        value: "https://openrouter.ai/api/v1"
       - key: Qwen__ApiKey
         sync: false
       - key: Qwen__Model
-        value: "qwen2.5-7b-instruct"
+        value: "qwen/qwen-2.5-7b-instruct"
 
   # 5. Public Web Service: API Gateway
   - type: web
@@ -95,6 +96,7 @@ services:
     env: docker
     dockerfilePath: src/PRM.Gateway/Dockerfile
     dockerContext: .
+    autoDeploy: true
     plan: free
     envVars:
       - key: PORT
