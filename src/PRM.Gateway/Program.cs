@@ -10,7 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 var identityUrl = builder.Configuration["Proxy:Services:Identity"] ?? "http://localhost:5001";
 var restaurantUrl = builder.Configuration["Proxy:Services:Restaurant"] ?? "http://localhost:5002";
 var orderUrl = builder.Configuration["Proxy:Services:Order"] ?? "http://localhost:5003";
-var aiUrl = builder.Configuration["Proxy:Services:AI"] ?? "http://localhost:5004";
+var aiUrl = builder.Configuration["Proxy:Services:AI"] ?? "https://ai-service-76dg.onrender.com";
 
 // Generate Ocelot config dynamically based on the configured services
 var ocelotJson = GenerateOcelotConfig(identityUrl, restaurantUrl, orderUrl, aiUrl);
@@ -62,7 +62,8 @@ app.Use(async (context, next) =>
         var info = new {
             Identity = config["Proxy:Services:Identity"],
             Restaurant = config["Proxy:Services:Restaurant"],
-            Order = config["Proxy:Services:Order"]
+            Order = config["Proxy:Services:Order"],
+            AI = config["Proxy:Services:AI"] ?? "https://ai-service-76dg.onrender.com"
         };
         await context.Response.WriteAsJsonAsync(info);
         return;
