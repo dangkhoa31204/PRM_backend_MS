@@ -94,7 +94,10 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+    p.AllowAnyMethod()
+     .AllowAnyHeader()
+     .SetIsOriginAllowed(origin => true)
+     .AllowCredentials()));
 
 // Rate limit cho endpoint public tạo/sửa đơn (PlaceOrder, AddItems) — chặn spam đơn ảo.
 // Partition theo IP để mỗi khách/bàn có hạn mức riêng, không dùng chung 1 bucket toàn hệ thống.
