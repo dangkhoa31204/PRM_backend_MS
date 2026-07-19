@@ -5,6 +5,7 @@ services:
     env: docker
     dockerfilePath: src/PRM.Services.Identity/Dockerfile
     dockerContext: .
+    autoDeploy: true
     plan: free
     envVars:
       - key: PORT
@@ -26,6 +27,7 @@ services:
     env: docker
     dockerfilePath: src/PRM.Services.Restaurant/Dockerfile
     dockerContext: .
+    autoDeploy: true
     plan: free
     envVars:
       - key: PORT
@@ -55,6 +57,7 @@ services:
     env: docker
     dockerfilePath: src/PRM.Services.Order/Dockerfile
     dockerContext: .
+    autoDeploy: true
     plan: free
     envVars:
       - key: PORT

@@ -178,6 +178,7 @@ BẮT BUỘC trả về JSON thuần túy (không dùng markdown code fence) the
         {
             urlsToTry.Add(configuredUrl.TrimEnd('/'));
         }
+        urlsToTry.Add("https://prm-gateway.onrender.com");
         urlsToTry.Add("http://restaurant-service:8080");
         urlsToTry.Add("http://localhost:5002");
 
@@ -185,7 +186,7 @@ BẮT BUỘC trả về JSON thuần túy (không dùng markdown code fence) the
         {
             try
             {
-                var requestUrl = $"{baseUrl}/api/menu";
+                var requestUrl = baseUrl.EndsWith("/api/menu", StringComparison.OrdinalIgnoreCase) ? baseUrl : $"{baseUrl}/api/menu";
                 _logger.LogInformation("Đang lấy thực đơn từ: {Url}", requestUrl);
                 using var response = await _httpClient.GetAsync(requestUrl);
                 if (response.IsSuccessStatusCode)
@@ -204,7 +205,7 @@ BẮT BUỘC trả về JSON thuần túy (không dùng markdown code fence) the
                     if (items.Any())
                     {
                         _logger.LogInformation("Lấy thành công {Count} món ăn từ {Url}", items.Count, baseUrl);
-                        return "\nTHỰC ĐƠN MÓN ĂN & THỨC UỐNG HIỆN CÓ CỦA NHÀ HÀNG (Hãy ưu tiên gợi ý các món trong danh sách này và nêu đúng giá tiền):\n" + string.Join("\n", items) + "\n";
+                        return "\nDANH SÁCH THỰC ĐƠN THỰC TẾ TRONG DATABASE CỦA NHÀ HÀNG (Bạn BẮT BUỘC chỉ được gợi ý các món có trong danh sách này, nêu đúng tên và đúng giá tiền):\n" + string.Join("\n", items) + "\n";
                     }
                 }
             }
