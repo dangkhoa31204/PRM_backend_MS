@@ -41,13 +41,22 @@ public class OrdersController : ControllerBase
     public record OrderResponse(
         int OrderId, int TableId, int Status, string StatusLabel,
         decimal TotalAmount, string? Note, DateTime CreatedAt, DateTime? UpdatedAt,
-        List<OrderItemResponse> Items, string PublicToken);
+        List<OrderItemResponse> Items, string PublicToken, int? PaymentMethod, string? PaymentMethodLabel);
     public record OrderStatusResponse(int OrderId, int Status, string StatusLabel, bool IsPaid, DateTime? PaidAt);
 
     private static string GetStatusLabel(int status) => status switch
     {
         1 => "Pending", 2 => "Confirmed", 3 => "Serving",
         4 => "Completed", 5 => "Cancelled", _ => "Unknown"
+    };
+
+    private static string GetPaymentMethodLabel(PaymentMethod method) => method switch
+    {
+        PaymentMethod.Cash => "Tiền mặt",
+        PaymentMethod.Transfer => "Chuyển khoản",
+        PaymentMethod.MoMo => "MoMo",
+        PaymentMethod.VNPay => "VNPay",
+        _ => "Chưa thanh toán"
     };
 
     internal static string GetItemStatusLabel(OrderItemStatus status) => status switch
@@ -79,10 +88,19 @@ public class OrdersController : ControllerBase
             oi.Quantity, oi.UnitPrice, oi.Note,
             (int)oi.Status, GetItemStatusLabel(oi.Status))).ToList();
 
+        if (order.Payment == null)
+        {
+            await _context.Entry(order).Reference(o => o.Payment).LoadAsync();
+        }
+
+        int? paymentMethodValue = order.Payment != null ? (int)order.Payment.Method : null;
+        string? paymentMethodText = order.Payment != null ? GetPaymentMethodLabel(order.Payment.Method) : null;
+
         return new OrderResponse(
             order.OrderId, order.TableId, order.Status,
             GetStatusLabel(order.Status), order.TotalAmount,
-            order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken);
+            order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken,
+            paymentMethodValue, paymentMethodText);
     }
 
     /// <summary>Khách đặt món mới qua QR (Public).</summary>
@@ -213,13 +231,12 @@ public class OrdersController : ControllerBase
 
         return Ok(response);
     }
-
     /// <summary>Lấy tất cả đơn hàng, lọc theo status (Staff/Admin).</summary>
     [Authorize(Roles = "1,2")]
     [HttpGet]
     public async Task<ActionResult<IEnumerable<OrderResponse>>> GetAll([FromQuery] int? status)
     {
-        var query = _context.Orders.AsQueryable();
+        var query = _context.Orders.Include(o => o.Payment).AsQueryable();
         if (status.HasValue) query = query.Where(o => o.Status == status.Value);
 
         var orders = await query.OrderByDescending(o => o.CreatedAt).ToListAsync();
@@ -303,6 +320,31 @@ public class OrdersController : ControllerBase
                     CreatedAt = DateTime.UtcNow
                 };
                 _context.Payments.Add(payment);
+            }
+        }
+
+        // Tự động cập nhật hoặc tạo thanh toán Tiền mặt khi xác nhận hoàn thành đơn hàng thủ công (Status = 4)
+        if (request.Status == 4)
+        {
+            var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == id);
+            if (payment == null)
+            {
+                payment = new Payment
+                {
+                    OrderId = id,
+                    Amount = order.TotalAmount,
+                    Method = PaymentMethod.Cash,
+                    Status = PaymentStatus.Paid,
+                    PaidAt = DateTime.UtcNow,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Payments.Add(payment);
+            }
+            else
+            {
+                payment.Status = PaymentStatus.Paid;
+                payment.PaidAt = DateTime.UtcNow;
+                payment.Method = PaymentMethod.Cash;
             }
         }
 

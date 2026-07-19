@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.SignalR;
 using PRM.Services.Order.Data;
 using PRM.Services.Order.Models;
 using PRM.Services.Order.Hubs;
+using PRM.Services.Order.Notifications;
 
 namespace PRM.Services.Order.Controllers;
 
@@ -14,11 +15,13 @@ public class FeedbacksController : ControllerBase
 {
     private readonly OrderDbContext _context;
     private readonly IHubContext<FeedbackHub> _feedbackHub;
+    private readonly INotificationService _notify;
 
-    public FeedbacksController(OrderDbContext context, IHubContext<FeedbackHub> feedbackHub)
+    public FeedbacksController(OrderDbContext context, IHubContext<FeedbackHub> feedbackHub, INotificationService notify)
     {
         _context = context;
         _feedbackHub = feedbackHub;
+        _notify = notify;
     }
 
     // --- DTOs ---
@@ -85,6 +88,7 @@ public class FeedbacksController : ControllerBase
         var response = ToResponse(feedback);
         // Broadcast real-time
         await _feedbackHub.Clients.All.SendAsync("FeedbackCreated", response);
+        await _notify.NotifyFeedbackCreatedAsync(response);
 
         return CreatedAtAction(nameof(GetByOrder), new { orderId = request.OrderId }, response);
     }
@@ -146,6 +150,7 @@ public class FeedbacksController : ControllerBase
         var response = ToResponse(feedback);
         // Broadcast real-time visibility update
         await _feedbackHub.Clients.All.SendAsync("FeedbackVisibilityChanged", response);
+        await _notify.NotifyFeedbackVisibilityChangedAsync(response);
 
         return Ok(response);
     }
