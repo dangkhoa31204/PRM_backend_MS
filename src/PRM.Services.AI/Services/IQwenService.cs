@@ -7,4 +7,5 @@ public interface IQwenService
     Task<ChatResponseDto> GetChatResponseAsync(List<ChatMessageDto> messages);
     Task<VoiceOrderResponse> ParseVoiceOrderAsync(VoiceOrderRequest request);
     Task<SentimentAnalysisResponse> AnalyzeSentimentAsync(SentimentAnalysisRequest request);
+    Task<string> GetMenuContextAsync();
 }
