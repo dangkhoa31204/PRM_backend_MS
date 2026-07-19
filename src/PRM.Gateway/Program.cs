@@ -120,12 +120,11 @@ static string GenerateOcelotConfig(string identityUrl, string restaurantUrl, str
     var order = ParseServiceUrl(orderUrl);
     var ai = ParseServiceUrl(aiUrl);
 
-    // Force HTTPS/WSS for Render hosts to avoid 301 redirects which break WebSockets
-    if (order.Host.EndsWith("onrender.com", StringComparison.OrdinalIgnoreCase))
-    {
-        order.Scheme = "https";
-        order.Port = 443;
-    }
+    // Force HTTPS/WSS for Render hosts to avoid 301 redirects which break WebSockets and POST requests
+    if (identity.Host.EndsWith("onrender.com", StringComparison.OrdinalIgnoreCase)) { identity.Scheme = "https"; identity.Port = 443; }
+    if (restaurant.Host.EndsWith("onrender.com", StringComparison.OrdinalIgnoreCase)) { restaurant.Scheme = "https"; restaurant.Port = 443; }
+    if (order.Host.EndsWith("onrender.com", StringComparison.OrdinalIgnoreCase)) { order.Scheme = "https"; order.Port = 443; }
+    if (ai.Host.EndsWith("onrender.com", StringComparison.OrdinalIgnoreCase)) { ai.Scheme = "https"; ai.Port = 443; }
     
     var wsScheme = order.Scheme.Equals("https", StringComparison.OrdinalIgnoreCase) ? "wss" : "ws";
 
