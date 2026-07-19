@@ -126,7 +126,11 @@ public class PaymentsController : ControllerBase
             payment.PaidAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
-        return Ok(ToResponse(payment));
+
+        var response = ToResponse(payment);
+        await _notify.NotifyPaymentUpdatedAsync(response);
+
+        return Ok(response);
     }
 
     /// <summary>Lấy tất cả payments (Admin).</summary>
@@ -276,7 +280,8 @@ public class PaymentsController : ControllerBase
 
                 var orderResponse = new OrdersController.OrderResponse(
                     order.OrderId, order.TableId, order.Status,
-                    order.Status == 4 ? "Completed" : "Cancelled", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken);
+                    order.Status == 4 ? "Completed" : "Cancelled", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken,
+                    order.Payment != null ? (int)order.Payment.Method : null, order.Payment != null ? GetMethodLabel(order.Payment.Method) : null);
 
                 await _notify.NotifyOrderStatusUpdatedAsync(orderResponse);
             }
@@ -361,7 +366,8 @@ public class PaymentsController : ControllerBase
 
             var orderResponse = new OrdersController.OrderResponse(
                 order.OrderId, order.TableId, order.Status,
-                "Completed", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken);
+                "Completed", order.TotalAmount, order.Note, order.CreatedAt, order.UpdatedAt, items, order.PublicToken,
+                payment != null ? (int)payment.Method : null, payment != null ? GetMethodLabel(payment.Method) : null);
 
             await _notify.NotifyOrderStatusUpdatedAsync(orderResponse);
         }
