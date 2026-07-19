@@ -37,14 +37,25 @@ public class AiController : ControllerBase
             }
         }
 
-        // Add customer assistant context if system prompt is missing
-        if (!request.Messages.Any(m => m.Role == "system"))
+        // Enforce customer assistant system prompt with strict food & drink guardrails
+        var systemMsg = request.Messages.FirstOrDefault(m => m.Role == "system");
+        string strictSystemPrompt = "Bạn là AI Sommelier - Trợ lý tư vấn ẩm thực thân thiện của nhà hàng.\n" +
+            "QUY TẮC BẮT BUỘC:\n" +
+            "1. Bạn CHỈ ĐƯỢC PHÉP trả lời các câu hỏi liên quan đến ẩm thực, đồ ăn, thức uống, thực đơn, nguyên liệu, khẩu vị, dinh dưỡng và dịch vụ nhà hàng.\n" +
+            "2. Tuyệt đối KHÔNG trả lời các chủ đề ngoài lề (như lập trình, toán học, thời tiết, chính trị, tin tức, công nghệ, game, câu hỏi chung...).\n" +
+            "3. Nếu khách hàng hỏi bất kỳ chủ đề ngoài lề nào, bạn PHẢI lịch sự từ chối bằng câu: \"Xin lỗi bạn, mình là AI Sommelier của nhà hàng nên chỉ có thể hỗ trợ tư vấn các thông tin về thực đơn, đồ ăn và thức uống thôi ạ. Bạn có muốn mình gợi ý món ăn hay thức uống gì không?\"";
+
+        if (systemMsg == null)
         {
             request.Messages.Insert(0, new ChatMessageDto
             {
                 Role = "system",
-                Content = "Bạn là AI Sommelier - Trợ lý tư vấn món ăn thân thiện của nhà hàng. Nhiệm vụ của bạn là tư vấn món ăn, thức uống, giải đáp thắc mắc về khẩu vị, thành phần nguyên liệu và chế độ ăn uống cho khách hàng."
+                Content = strictSystemPrompt
             });
+        }
+        else
+        {
+            systemMsg.Content = strictSystemPrompt;
         }
 
         var result = await _qwenService.GetChatResponseAsync(request.Messages);
