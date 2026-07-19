@@ -94,8 +94,34 @@ jobs:
       run: |
         if [ -n "${{ secrets.RENDER_GATEWAY_DEPLOY_HOOK }}" ]; then
           curl -s -X POST "${{ secrets.RENDER_GATEWAY_DEPLOY_HOOK }}"
-          echo "Successfully triggered Render deploy hook!"
-        else
-          echo "RENDER_GATEWAY_DEPLOY_HOOK secret is not set, skipping deployment."
+          echo "Successfully triggered Gateway deploy hook!"
+        fi
+
+    - name: Trigger Render Deploy Hook for Identity Service
+      run: |
+        if [ -n "${{ secrets.RENDER_IDENTITY_DEPLOY_HOOK }}" ]; then
+          curl -s -X POST "${{ secrets.RENDER_IDENTITY_DEPLOY_HOOK }}"
+          echo "Successfully triggered Identity Service deploy hook!"
+        fi
+
+    - name: Trigger Render Deploy Hook for Restaurant Service
+      run: |
+        if [ -n "${{ secrets.RENDER_RESTAURANT_DEPLOY_HOOK }}" ]; then
+          curl -s -X POST "${{ secrets.RENDER_RESTAURANT_DEPLOY_HOOK }}"
+          echo "Successfully triggered Restaurant Service deploy hook!"
+        fi
+
+    - name: Trigger Render Deploy Hook for Order Service
+      run: |
+        if [ -n "${{ secrets.RENDER_ORDER_DEPLOY_HOOK }}" ]; then
+          curl -s -X POST "${{ secrets.RENDER_ORDER_DEPLOY_HOOK }}"
+          echo "Successfully triggered Order Service deploy hook!"
+        fi
+
+    - name: Trigger Render Deploy Hook for AI Service
+      run: |
+        if [ -n "${{ secrets.RENDER_AI_DEPLOY_HOOK }}" ]; then
+          curl -s -X POST "${{ secrets.RENDER_AI_DEPLOY_HOOK }}"
+          echo "Successfully triggered AI Service deploy hook!"
         fi
 
