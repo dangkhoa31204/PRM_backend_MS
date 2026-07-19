@@ -172,32 +172,46 @@ BẮT BUỘC trả về JSON thuần túy (không dùng markdown code fence) the
 
     public async Task<string> GetMenuContextAsync()
     {
-        try
+        var urlsToTry = new List<string>();
+        var configuredUrl = _config["Services:Restaurant"];
+        if (!string.IsNullOrWhiteSpace(configuredUrl))
         {
-            var restaurantUrl = (_config["Services:Restaurant"] ?? "http://localhost:5002").TrimEnd('/');
-            using var response = await _httpClient.GetAsync($"{restaurantUrl}/api/menu");
-            if (response.IsSuccessStatusCode)
-            {
-                var content = await response.Content.ReadAsStringAsync();
-                using var doc = JsonDocument.Parse(content);
-                var items = new List<string>();
-                foreach (var el in doc.RootElement.EnumerateArray())
-                {
-                    var name = el.GetProperty("name").GetString();
-                    var price = el.GetProperty("price").GetDecimal();
-                    var desc = el.TryGetProperty("description", out var d) && d.ValueKind != JsonValueKind.Null ? d.GetString() : null;
-                    items.Add($"- {name}: {price:N0} VNĐ" + (string.IsNullOrWhiteSpace(desc) ? "" : $" (Mô tả: {desc})"));
-                }
+            urlsToTry.Add(configuredUrl.TrimEnd('/'));
+        }
+        urlsToTry.Add("http://restaurant-service:8080");
+        urlsToTry.Add("http://localhost:5002");
 
-                if (items.Any())
+        foreach (var baseUrl in urlsToTry.Distinct())
+        {
+            try
+            {
+                var requestUrl = $"{baseUrl}/api/menu";
+                _logger.LogInformation("Đang lấy thực đơn từ: {Url}", requestUrl);
+                using var response = await _httpClient.GetAsync(requestUrl);
+                if (response.IsSuccessStatusCode)
                 {
-                    return "\nTHỰC ĐƠN MÓN ĂN & THỨC UỐNG HIỆN CÓ CỦA NHÀ HÀNG (Hãy ưu tiên gợi ý các món trong danh sách này và nêu đúng giá tiền):\n" + string.Join("\n", items) + "\n";
+                    var content = await response.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(content);
+                    var items = new List<string>();
+                    foreach (var el in doc.RootElement.EnumerateArray())
+                    {
+                        var name = el.GetProperty("name").GetString();
+                        var price = el.GetProperty("price").GetDecimal();
+                        var desc = el.TryGetProperty("description", out var d) && d.ValueKind != JsonValueKind.Null ? d.GetString() : null;
+                        items.Add($"- {name}: {price:N0} VNĐ" + (string.IsNullOrWhiteSpace(desc) ? "" : $" (Mô tả: {desc})"));
+                    }
+
+                    if (items.Any())
+                    {
+                        _logger.LogInformation("Lấy thành công {Count} món ăn từ {Url}", items.Count, baseUrl);
+                        return "\nTHỰC ĐƠN MÓN ĂN & THỨC UỐNG HIỆN CÓ CỦA NHÀ HÀNG (Hãy ưu tiên gợi ý các món trong danh sách này và nêu đúng giá tiền):\n" + string.Join("\n", items) + "\n";
+                    }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Không thể lấy danh sách menu từ RestaurantService");
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Không thể lấy menu từ {Url}: {Message}", baseUrl, ex.Message);
+            }
         }
         return string.Empty;
     }

@@ -89,6 +89,8 @@ services:
         sync: false
       - key: Qwen__Model
         value: "qwen/qwen-2.5-7b-instruct"
+      - key: Services__Restaurant
+        value: "http://restaurant-service:8080"
 
   # 5. Public Web Service: API Gateway
   - type: web
