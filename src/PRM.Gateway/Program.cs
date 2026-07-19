@@ -50,6 +50,11 @@ app.UseAuthentication();
 
 app.Use(async (context, next) =>
 {
+    if (context.Request.Path == "/favicon.ico")
+    {
+        context.Response.StatusCode = StatusCodes.Status204NoContent;
+        return;
+    }
     if (context.Request.Path == "/debug-config")
     {
         var config = context.RequestServices.GetRequiredService<IConfiguration>();
