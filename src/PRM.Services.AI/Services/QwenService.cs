@@ -39,7 +39,7 @@ public class QwenService : IQwenService
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Post, $"{baseUrl}/chat/completions");
-            if (!string.IsNullOrWhiteSpace(apiKey))
+            if (!string.IsNullOrWhiteSpace(apiKey) && !apiKey.Equals("ollama", StringComparison.OrdinalIgnoreCase))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", apiKey);
             }

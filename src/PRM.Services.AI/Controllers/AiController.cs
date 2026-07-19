@@ -28,6 +28,15 @@ public class AiController : ControllerBase
             return BadRequest(new { Message = "Nội dung cuộc trò chuyện không được để trống." });
         }
 
+        // Auto-fix empty or numeric roles to 'user'
+        foreach (var msg in request.Messages)
+        {
+            if (string.IsNullOrWhiteSpace(msg.Role) || msg.Role == "0" || msg.Role == "1" || msg.Role == "2")
+            {
+                msg.Role = "user";
+            }
+        }
+
         // Add customer assistant context if system prompt is missing
         if (!request.Messages.Any(m => m.Role == "system"))
         {
