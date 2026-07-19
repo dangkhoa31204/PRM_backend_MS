@@ -35,7 +35,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader().AllowAnyHeader()));
+    p.AllowAnyMethod()
+     .AllowAnyHeader()
+     .SetIsOriginAllowed(origin => true)
+     .AllowCredentials()));
 
 builder.Services.AddOcelot();
 
@@ -77,6 +80,8 @@ app.Use(async (context, next) =>
         context.Request.Headers["X-Forwarded-For"] = clientIp;
     await next();
 });
+
+app.UseWebSockets();
 
 await app.UseOcelot();
 
