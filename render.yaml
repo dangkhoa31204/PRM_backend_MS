@@ -114,7 +114,7 @@ services:
       - key: Proxy__Services__Order
         value: "http://order-service:8080"
       - key: Proxy__Services__AI
-        value: "http://ai-service:8080"
+        value: "https://ai-service-76dg.onrender.com"
 
 databases:
   # 6. PostgreSQL Database (Dùng chung cho các Service)
