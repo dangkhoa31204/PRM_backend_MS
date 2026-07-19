@@ -72,7 +72,24 @@ services:
       - key: Services__RestaurantService
         value: "http://restaurant-service:8080/"
 
-  # 4. Public Web Service: API Gateway
+  # 4. Web Service: AI Service (Qwen Chatbot)
+  - type: web
+    name: ai-service
+    env: docker
+    dockerfilePath: src/PRM.Services.AI/Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: Qwen__BaseUrl
+        value: "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+      - key: Qwen__ApiKey
+        sync: false
+      - key: Qwen__Model
+        value: "qwen2.5-7b-instruct"
+
+  # 5. Public Web Service: API Gateway
   - type: web
     name: prm-gateway
     env: docker
@@ -94,9 +111,11 @@ services:
         value: "http://restaurant-service:8080"
       - key: Proxy__Services__Order
         value: "http://order-service:8080"
+      - key: Proxy__Services__AI
+        value: "http://ai-service:8080"
 
 databases:
-  # 5. PostgreSQL Database (Dùng chung cho 3 Service)
+  # 6. PostgreSQL Database (Dùng chung cho các Service)
   - name: prm-db-new
     databaseName: prm_db_new
     user: prm_user

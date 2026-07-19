@@ -10,9 +10,10 @@ var builder = WebApplication.CreateBuilder(args);
 var identityUrl = builder.Configuration["Proxy:Services:Identity"] ?? "http://localhost:5001";
 var restaurantUrl = builder.Configuration["Proxy:Services:Restaurant"] ?? "http://localhost:5002";
 var orderUrl = builder.Configuration["Proxy:Services:Order"] ?? "http://localhost:5003";
+var aiUrl = builder.Configuration["Proxy:Services:AI"] ?? "http://localhost:5004";
 
 // Generate Ocelot config dynamically based on the configured services
-var ocelotJson = GenerateOcelotConfig(identityUrl, restaurantUrl, orderUrl);
+var ocelotJson = GenerateOcelotConfig(identityUrl, restaurantUrl, orderUrl, aiUrl);
 var tempPath = Path.Combine(AppContext.BaseDirectory, "ocelot.generated.json");
 File.WriteAllText(tempPath, ocelotJson);
 builder.Configuration.AddJsonFile(tempPath, optional: false, reloadOnChange: false);
@@ -107,11 +108,12 @@ static (string Scheme, string Host, int Port) ParseServiceUrl(string urlString)
 }
 
 // Helper: Generate Ocelot config dynamically
-static string GenerateOcelotConfig(string identityUrl, string restaurantUrl, string orderUrl)
+static string GenerateOcelotConfig(string identityUrl, string restaurantUrl, string orderUrl, string aiUrl)
 {
     var identity = ParseServiceUrl(identityUrl);
     var restaurant = ParseServiceUrl(restaurantUrl);
     var order = ParseServiceUrl(orderUrl);
+    var ai = ParseServiceUrl(aiUrl);
 
     // Force HTTPS/WSS for Render hosts to avoid 301 redirects which break WebSockets
     if (order.Host.EndsWith("onrender.com", StringComparison.OrdinalIgnoreCase))
@@ -200,6 +202,20 @@ static string GenerateOcelotConfig(string identityUrl, string restaurantUrl, str
           "DownstreamScheme": "{{order.Scheme}}",
           "DownstreamHostAndPorts": [{ "Host": "{{order.Host}}", "Port": {{order.Port}} }],
           "UpstreamPathTemplate": "/api/feedbacks",
+          "UpstreamHttpMethod": [ "GET", "POST" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/ai/{everything}",
+          "DownstreamScheme": "{{ai.Scheme}}",
+          "DownstreamHostAndPorts": [{ "Host": "{{ai.Host}}", "Port": {{ai.Port}} }],
+          "UpstreamPathTemplate": "/api/ai/{everything}",
+          "UpstreamHttpMethod": [ "GET", "POST", "PUT", "DELETE", "PATCH" ]
+        },
+        {
+          "DownstreamPathTemplate": "/api/ai",
+          "DownstreamScheme": "{{ai.Scheme}}",
+          "DownstreamHostAndPorts": [{ "Host": "{{ai.Host}}", "Port": {{ai.Port}} }],
+          "UpstreamPathTemplate": "/api/ai",
           "UpstreamHttpMethod": [ "GET", "POST" ]
         },
         {
