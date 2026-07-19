@@ -52,8 +52,8 @@ public class QwenService : IQwenService
                 _logger.LogError("Qwen API returned error: {StatusCode} - {Error}", response.StatusCode, errorMsg);
                 return new ChatResponseDto
                 {
-                    Reply = "Xin lỗi, hiện tại hệ thống AI đang bận hoặc dịch vụ Ollama chưa bật. Vui lòng kiểm tra lại.",
-                    Provider = "Qwen (Error Fallback)"
+                    Reply = $"Lỗi từ dịch vụ AI ({response.StatusCode}): {errorMsg}",
+                    Provider = $"Qwen Error ({response.StatusCode})"
                 };
             }
 
@@ -77,7 +77,7 @@ public class QwenService : IQwenService
             _logger.LogError(ex, "Lỗi khi gọi Qwen Service API");
             return new ChatResponseDto
             {
-                Reply = "Không thể kết nối đến dịch vụ AI Qwen tại http://localhost:11434. Vui lòng kiểm tra lại dịch vụ Ollama.",
+                Reply = $"Không thể kết nối đến AI Service ({baseUrl}): {ex.Message}",
                 Provider = "Qwen (Connection Error)"
             };
         }
