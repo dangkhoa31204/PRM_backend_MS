@@ -84,16 +84,27 @@ using (var scope = app.Services.CreateScope())
     // Seed and fix MenuItems with full categories & valid image URLs
     try
     {
-        // Fix existing items with invalid local device file paths
-        var invalidItems = db.MenuItems.Where(m => m.ImageUrl != null && m.ImageUrl.StartsWith("/data/user")).ToList();
-        foreach (var item in invalidItems)
+        // Fix existing items with invalid device file paths or broken image URLs
+        var allItems = db.MenuItems.ToList();
+        foreach (var item in allItems)
         {
-            item.ImageUrl = item.Name switch
+            if (item.Name.Equals("Trà Vải Nhãn", StringComparison.OrdinalIgnoreCase) || item.Name.Equals("trà vải", StringComparison.OrdinalIgnoreCase))
             {
-                "7up" => "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80",
-                "Pudding siêu ngọt" => "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=600&auto=format&fit=crop&q=80",
-                _ => null
-            };
+                item.ImageUrl = "https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?w=600&auto=format&fit=crop&q=80";
+            }
+            else if (item.Name.Equals("Mì Ý Sốt Bò Bằm", StringComparison.OrdinalIgnoreCase))
+            {
+                item.ImageUrl = "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600&auto=format&fit=crop&q=80";
+            }
+            else if (item.ImageUrl != null && item.ImageUrl.StartsWith("/data/user"))
+            {
+                item.ImageUrl = item.Name switch
+                {
+                    "7up" => "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80",
+                    "Pudding siêu ngọt" => "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=600&auto=format&fit=crop&q=80",
+                    _ => null
+                };
+            }
         }
         db.SaveChanges();
 
@@ -135,7 +146,7 @@ using (var scope = app.Services.CreateScope())
                 Description = "Trà vải thơm ngọt kết hợp trái vải tươi giòn mọng nước.",
                 Price = 35000,
                 Category = PRM.Shared.Enums.MenuCategory.Tea,
-                ImageUrl = "https://res.cloudinary.com/dkppq6bsj/image/upload/v1719374026/restaurant_menu/n04iayuhqspq71u8swy1.jpg",
+                ImageUrl = "https://images.unsplash.com/photo-1595981267035-7b04ca84a82d?w=600&auto=format&fit=crop&q=80",
                 IsAvailable = true,
                 CreatedAt = DateTime.UtcNow
             },
@@ -205,7 +216,7 @@ using (var scope = app.Services.CreateScope())
                 Description = "Mì Spaghetti sốt bò bằm Bolognese thơm lừng kèm phô mai Parmesan.",
                 Price = 59000,
                 Category = PRM.Shared.Enums.MenuCategory.Other,
-                ImageUrl = "https://images.unsplash.com/photo-1621996346565-e3d5d6281273?w=600&auto=format&fit=crop&q=80",
+                ImageUrl = "https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600&auto=format&fit=crop&q=80",
                 IsAvailable = true,
                 CreatedAt = DateTime.UtcNow
             },
