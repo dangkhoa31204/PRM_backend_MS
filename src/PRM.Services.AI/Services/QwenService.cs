@@ -33,7 +33,7 @@ public class QwenService : IQwenService
         {
             model = model,
             messages = messages.Select(m => new { role = m.Role, content = m.Content }).ToList(),
-            temperature = 0.7
+            temperature = 0.3
         };
 
         try
