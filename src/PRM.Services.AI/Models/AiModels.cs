@@ -56,3 +56,9 @@ public class DashboardAnalysisResponse
     public string Summary { get; set; } = string.Empty;
     public List<string> MarketingPlan { get; set; } = new();
 }
+
+public class DashboardRecommendationResponse
+{
+    public string Summary { get; set; } = string.Empty;
+    public List<string> Recommendations { get; set; } = new();
+}

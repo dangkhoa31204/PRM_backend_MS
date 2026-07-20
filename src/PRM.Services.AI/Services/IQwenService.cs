@@ -10,4 +10,5 @@ public interface IQwenService
     Task<string> GetMenuContextAsync();
     Task<string> GetDashboardContextAsync();
     Task<DashboardAnalysisResponse> GenerateMarketingPlanAsync();
+    Task<DashboardRecommendationResponse> GenerateDashboardRecommendationsAsync();
 }

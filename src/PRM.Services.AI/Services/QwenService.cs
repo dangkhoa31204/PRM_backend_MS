@@ -414,4 +414,64 @@ BẮT BUỘC trả về JSON thuần túy (KHÔNG dùng markdown block ```json) 
             };
         }
     }
+
+    public async Task<DashboardRecommendationResponse> GenerateDashboardRecommendationsAsync()
+    {
+        var dashboardContext = await GetDashboardContextAsync();
+
+        var systemPrompt = new ChatMessageDto
+        {
+            Role = "system",
+            Content = @"Bạn là Cố vấn Tối ưu Vận hành & Doanh số (Business & Operations Advisor) của Tiệm Mộc.
+Nhiệm vụ: Tự động phân tích báo cáo doanh số & feedback từ Database của Tiệm Mộc để đưa ra 4 ĐỀ XUẤT QUAN TRỌNG NHẤT hiển thị trên Admin Dashboard cho Quản lý.
+
+" + dashboardContext + @"
+
+YÊU CẦU:
+- Đưa ra 4 đề xuất thực tế, ngắn gọn (1-2 câu mỗi đề xuất) tập trung vào:
+  1. [Tối ưu Menu & Giá]: Điều chỉnh combo, giá bán hoặc tỷ lệ nguyên liệu.
+  2. [Thúc đẩy Món Ế]: Giải pháp tăng lượt gọi cho món bán chậm.
+  3. [Chất lượng Dịch vụ]: Dựa trên feedback của khách để cải thiện.
+  4. [Chuẩn bị Vận hành]: Dự báo lượng nguyên liệu / nhân sự giờ cao điểm.
+
+BẮT BUỘC trả về JSON thuần túy (KHÔNG dùng markdown block ```json) theo cấu trúc:
+{
+  ""summary"": ""Tóm tắt 1 câu về sức khỏe vận hành & doanh số hiện tại của Tiệm Mộc"",
+  ""recommendations"": [
+    ""[Thực đơn & Giá] Đề xuất 1: ..."",
+    ""[Thúc đẩy Món Ế] Đề xuất 2: ..."",
+    ""[Trải nghiệm Khách] Đề xuất 3: ..."",
+    ""[Vận hành Ca] Đề xuất 4: ...""
+  ]
+}"
+        };
+
+        var userMessage = new ChatMessageDto
+        {
+            Role = "user",
+            Content = "Hãy phân tích báo cáo doanh số từ Database và đưa ra 4 đề xuất tối ưu vận hành & kinh doanh cho Admin Dashboard."
+        };
+
+        var chatResult = await GetChatResponseAsync(new List<ChatMessageDto> { systemPrompt, userMessage });
+
+        try
+        {
+            var cleanJson = chatResult.Reply.Replace("```json", "").Replace("```", "").Trim();
+            var result = JsonSerializer.Deserialize<DashboardRecommendationResponse>(cleanJson, _jsonOptions);
+            return result ?? new DashboardRecommendationResponse
+            {
+                Summary = "Phân tích vận hành Tiệm Mộc thành công.",
+                Recommendations = new List<string> { chatResult.Reply }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Không thể parse JSON từ Dashboard Recommendations AI");
+            return new DashboardRecommendationResponse
+            {
+                Summary = "Đề xuất vận hành Tiệm Mộc",
+                Recommendations = new List<string> { chatResult.Reply }
+            };
+        }
+    }
 }

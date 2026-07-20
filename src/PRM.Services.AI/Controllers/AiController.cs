@@ -124,6 +124,17 @@ public class AiController : ControllerBase
     }
 
     /// <summary>
+    /// AI Automatic Admin Dashboard Recommendations Generator (Read DB & Recommend)
+    /// </summary>
+    [HttpGet("dashboard-recommendations")]
+    [HttpPost("dashboard-recommendations")]
+    public async Task<ActionResult<DashboardRecommendationResponse>> GetDashboardRecommendations()
+    {
+        var result = await _qwenService.GenerateDashboardRecommendationsAsync();
+        return Ok(result);
+    }
+
+    /// <summary>
     /// Health Check endpoint for AI microservice
     /// </summary>
     [HttpGet("health")]
