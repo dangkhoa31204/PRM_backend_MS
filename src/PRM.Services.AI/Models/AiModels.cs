@@ -50,3 +50,9 @@ public class SentimentAnalysisResponse
     public List<string> HighlightedIssues { get; set; } = new();
     public List<string> ActionItems { get; set; } = new();
 }
+
+public class DashboardAnalysisResponse
+{
+    public string Summary { get; set; } = string.Empty;
+    public List<string> MarketingPlan { get; set; } = new();
+}

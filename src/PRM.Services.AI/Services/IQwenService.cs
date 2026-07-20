@@ -8,4 +8,6 @@ public interface IQwenService
     Task<VoiceOrderResponse> ParseVoiceOrderAsync(VoiceOrderRequest request);
     Task<SentimentAnalysisResponse> AnalyzeSentimentAsync(SentimentAnalysisRequest request);
     Task<string> GetMenuContextAsync();
+    Task<string> GetDashboardContextAsync();
+    Task<DashboardAnalysisResponse> GenerateMarketingPlanAsync();
 }
