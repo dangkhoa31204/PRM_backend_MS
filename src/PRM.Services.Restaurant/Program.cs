@@ -81,77 +81,154 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<RestaurantDbContext>();
     db.Database.Migrate();
 
-    // Reset and seed MenuItems to match user's custom items
+    // Seed and fix MenuItems with full categories & valid image URLs
     try
     {
-        if (!db.MenuItems.Any())
+        // Fix existing items with invalid local device file paths
+        var invalidItems = db.MenuItems.Where(m => m.ImageUrl != null && m.ImageUrl.StartsWith("/data/user")).ToList();
+        foreach (var item in invalidItems)
         {
-            db.MenuItems.AddRange(new List<PRM.Services.Restaurant.Models.MenuItem>
+            item.ImageUrl = item.Name switch
             {
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "matcha",
-                    Description = "trà olong thanh mát",
-                    Price = 10000,
-                    Category = PRM.Shared.Enums.MenuCategory.Tea,
-                    ImageUrl = null,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "banhngot",
-                    Description = "banhngotmoi",
-                    Price = 10000,
-                    Category = PRM.Shared.Enums.MenuCategory.Cake,
-                    ImageUrl = null,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "7up",
-                    Description = "nước 7up giải khát",
-                    Price = 10000,
-                    Category = PRM.Shared.Enums.MenuCategory.Juice,
-                    ImageUrl = "/data/user/0/com.example.qr_order/cache/5c5443fa-a6be-4b07-9b2f-b4b1a4570b20/IMG_20260630_102115.jpg",
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "Pudding siêu ngọt",
-                    Description = "khó lỗi",
-                    Price = 120000,
-                    Category = PRM.Shared.Enums.MenuCategory.Cake,
-                    ImageUrl = "/data/user/0/com.example.qr_order/cache/5c5443fa-a6be-4b07-9b2f-b4b1a4570b20/IMG_20260630_102128.jpg",
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "bánh siêu ngọt",
-                    Description = "bánh ngon",
-                    Price = 20000,
-                    Category = PRM.Shared.Enums.MenuCategory.Cake,
-                    ImageUrl = null,
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new PRM.Services.Restaurant.Models.MenuItem
-                {
-                    Name = "trà vải",
-                    Description = "trà vải siêu ngọt",
-                    Price = 20000,
-                    Category = PRM.Shared.Enums.MenuCategory.Tea,
-                    ImageUrl = "https://res.cloudinary.com/dkppq6bsj/image/upload/v1719374026/restaurant_menu/n04iayuhqspq71u8swy1.jpg",
-                    IsAvailable = true,
-                    CreatedAt = DateTime.UtcNow
-                }
-            });
+                "7up" => "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80",
+                "Pudding siêu ngọt" => "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=600&auto=format&fit=crop&q=80",
+                _ => null
+            };
+        }
+        db.SaveChanges();
 
+        var defaultMenuItems = new List<PRM.Services.Restaurant.Models.MenuItem>
+        {
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Cà Phê Sữa Đá",
+                Description = "Cà phê phin đậm đà hòa quyện với sữa đặc ngọt ngào và đá lạnh.",
+                Price = 29000,
+                Category = PRM.Shared.Enums.MenuCategory.Coffee,
+                ImageUrl = "https://images.unsplash.com/photo-1517701604599-bb29b565090c?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Cà Phê Muối",
+                Description = "Sự kết hợp hoàn hảo giữa vị đắng cà phê và lớp kem muối béo ngậy.",
+                Price = 35000,
+                Category = PRM.Shared.Enums.MenuCategory.Coffee,
+                ImageUrl = "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Trà Đào Cam Sả",
+                Description = "Trà đào thơm nức hương sả tươi và vị cam chua nhẹ thanh mát.",
+                Price = 39000,
+                Category = PRM.Shared.Enums.MenuCategory.Tea,
+                ImageUrl = "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Trà Vải Nhãn",
+                Description = "Trà vải thơm ngọt kết hợp trái vải tươi giòn mọng nước.",
+                Price = 35000,
+                Category = PRM.Shared.Enums.MenuCategory.Tea,
+                ImageUrl = "https://res.cloudinary.com/dkppq6bsj/image/upload/v1719374026/restaurant_menu/n04iayuhqspq71u8swy1.jpg",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Matcha Latte Uji",
+                Description = "Bột Matcha Uji Nhật Bản nguyên chất hòa cùng sữa tươi thanh trùng béo ngậy.",
+                Price = 42000,
+                Category = PRM.Shared.Enums.MenuCategory.Tea,
+                ImageUrl = "https://images.unsplash.com/photo-1536256263959-770b48d82b0a?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Bánh Tiramisu Ý",
+                Description = "Bánh Tiramisu Ý mềm mịn ngập tràn hương vị cà phê và cacao nguyên chất.",
+                Price = 45000,
+                Category = PRM.Shared.Enums.MenuCategory.Cake,
+                ImageUrl = "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Pudding Chanh Dây",
+                Description = "Pudding mềm mịn béo ngậy phủ sốt chanh dây chua ngọt thanh mát.",
+                Price = 35000,
+                Category = PRM.Shared.Enums.MenuCategory.Cake,
+                ImageUrl = "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Bánh Croissant Bơ Tươi",
+                Description = "Bánh sừng bò ngàn lớp thơm lừng hương bơ Pháp cao cấp.",
+                Price = 28000,
+                Category = PRM.Shared.Enums.MenuCategory.Cake,
+                ImageUrl = "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Nước Ép Cam Tươi",
+                Description = "Cam sành ép nguyên chất 100% mọng nước giàu Vitamin C.",
+                Price = 38000,
+                Category = PRM.Shared.Enums.MenuCategory.Juice,
+                ImageUrl = "https://images.unsplash.com/photo-1613478223719-2ab802602423?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Nước 7Up Chanh Đá",
+                Description = "Nước 7Up giải khát ướp lạnh cùng lát chanh tươi mát rượi.",
+                Price = 20000,
+                Category = PRM.Shared.Enums.MenuCategory.Juice,
+                ImageUrl = "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Mì Ý Sốt Bò Bằm",
+                Description = "Mì Spaghetti sốt bò bằm Bolognese thơm lừng kèm phô mai Parmesan.",
+                Price = 59000,
+                Category = PRM.Shared.Enums.MenuCategory.Other,
+                ImageUrl = "https://images.unsplash.com/photo-1621996346565-e3d5d6281273?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            },
+            new PRM.Services.Restaurant.Models.MenuItem
+            {
+                Name = "Khoai Tây Chiên Giòn",
+                Description = "Khoai tây chiên vàng giòn rùm rụm kèm sốt mayonnaise tương ớt.",
+                Price = 29000,
+                Category = PRM.Shared.Enums.MenuCategory.Other,
+                ImageUrl = "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=600&auto=format&fit=crop&q=80",
+                IsAvailable = true,
+                CreatedAt = DateTime.UtcNow
+            }
+        };
+
+        var existingNames = db.MenuItems.Select(m => m.Name.ToLower()).ToList();
+        var itemsToAdd = defaultMenuItems.Where(m => !existingNames.Contains(m.Name.ToLower())).ToList();
+
+        if (itemsToAdd.Any())
+        {
+            db.MenuItems.AddRange(itemsToAdd);
             db.SaveChanges();
-            Console.WriteLine("✅ Database seeded successfully with user's custom MenuItems.");
+            Console.WriteLine($"✅ Added {itemsToAdd.Count} new MenuItems with high-res images to database.");
         }
     }
     catch (Exception ex)
