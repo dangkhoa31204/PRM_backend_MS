@@ -4,6 +4,10 @@
     <Project Path="src/PRM.Services.Identity/PRM.Services.Identity.csproj" />
     <Project Path="src/PRM.Services.Order/PRM.Services.Order.csproj" />
     <Project Path="src/PRM.Services.Restaurant/PRM.Services.Restaurant.csproj" />
+    <Project Path="src/PRM.Services.AI/PRM.Services.AI.csproj" />
     <Project Path="src/PRM.Shared/PRM.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PRM.Tests/PRM.Tests.csproj" />
   </Folder>
 </Solution>

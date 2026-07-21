@@ -35,6 +35,10 @@ jobs:
     - name: Build API Gateway
       run: dotnet build src/PRM.Gateway/PRM.Gateway.csproj -c Release
 
+    - name: Run Unit Tests
+      run: dotnet test tests/PRM.Tests/PRM.Tests.csproj -c Release
+
+
   docker-verify:
     name: Verify Docker Builds
     runs-on: ubuntu-latest
